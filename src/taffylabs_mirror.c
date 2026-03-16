@@ -2,10 +2,13 @@
 #include <obs-frontend-api.h>
 #include <util/config-file.h>
 
+#include "taffylabs_settings.h"
+#include "lore-api.h"
+
 static obs_output_t  *g_mirror_output  = NULL;
 static obs_service_t *g_mirror_service = NULL;
 
-static const char *DEFAULT_SERVER = "rtmp://oh.elevensports.live/Live";
+static const char *DEFAULT_SERVER = "rtmps://dev-rtmp.tome-lore.com:443/live";
 static const char *MIRROR_KEY    = "TAFFY";
 
 /* If you really want to keep exactly one constant string:
@@ -28,7 +31,7 @@ static void mirror_release_all(void)
 static void mirror_build_service(const char* STREAM_SERVER, const char* STREAM_KEY)
 {
 	obs_data_t *svc_settings = obs_data_create();
-	if(STREAM_SERVER == NULL){
+	if(STREAM_SERVER == NULL || STREAM_SERVER[0] == '\0') {
 		STREAM_SERVER = DEFAULT_SERVER;
 	}
 	obs_data_set_string(svc_settings, "server", STREAM_SERVER);
@@ -44,6 +47,16 @@ static void mirror_build_service(const char* STREAM_SERVER, const char* STREAM_K
 bool taffylabs_mirror_start(const char* STREAM_SERVER, const char* STREAM_KEY)
 {
     blog(LOG_INFO, "[TaffyLabs] starting mirror...");
+	if(taffylabs_get_autoBroadcast()){
+		blog(LOG_INFO, "[TaffyLabs] autoBroadcast enabled, creating new broadcast before starting mirror...");
+		lore_api_result rNew = lore_broadcastsCreate(taffylabs_get_bearer_token(), NULL, NULL,NULL);
+		if (!rNew.ok) {
+			blog(LOG_WARNING, "[TaffyLabs] failed to create new broadcast: %s", rNew.error_text ? rNew.error_text : "unknown error");
+		} else {
+			blog(LOG_INFO, "[TaffyLabs] created new broadcast successfully: %s", rNew.body_text);
+
+		}
+	}
     
 	if (g_mirror_output) {
 		blog(LOG_WARNING, "[TaffyLabs] mirror already started?");

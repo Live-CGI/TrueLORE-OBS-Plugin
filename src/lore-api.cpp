@@ -1,12 +1,13 @@
 #include "lore-api.h"
 #include "taffy_json_http.h"
+#include "lore-deviceInfo.h"
 
 #include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
-
+#include <time.h>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -64,6 +65,61 @@ namespace
 		ctx->callback(&result, ctx->user_data);
 		lore_api_free_result(&result);
 	}
+}
+
+char *taffylabs_create_metadata_json(void)
+{
+    time_t now = time(NULL);
+    struct tm utc;
+
+#if defined(_WIN32)
+    gmtime_s(&utc, &now);
+#else
+    gmtime_r(&now, &utc);
+#endif
+
+    char date[11];     // YYYY-MM-DD
+    char timeStr[9];   // HH.mm.ss
+
+    strftime(date, sizeof(date), "%Y-%m-%d", &utc);
+    strftime(timeStr, sizeof(timeStr), "%H.%M.%S", &utc);
+
+    const char *deviceJson = taffylabs_get_unique_device_id_json();
+
+    if (!deviceJson)
+        deviceJson = "null";
+
+    char title[128];
+    char description[256];
+
+    snprintf(title, sizeof(title),
+        "New Broadcast %s %s",
+        date,
+        timeStr);
+
+    snprintf(description, sizeof(description),
+        "New Broadcast created at %s UTC on %s",
+        timeStr,
+        date);
+
+    const char *format =
+        "{"
+        "\"metadata\":{"
+        "\"title\":\"%s\","
+        "\"description\":\"%s\","
+        "\"deviceInfo\":%s"
+        "}"
+        "}";
+
+    size_t needed = snprintf(NULL, 0, format, title, description, deviceJson) + 1;
+
+    char *json = (char *)malloc(needed);
+    if (!json)
+        return NULL;
+
+    snprintf(json, needed, format, title, description, deviceJson);
+
+    return json;
 }
 
 extern "C" lore_api_result lore_get(lore_api_callback callback)
@@ -291,17 +347,19 @@ extern "C" lore_api_result lore_keys_deletePublic(const char *bearer,const char 
 		void *user_data)
 	{
 		lore_api_result result{};
-
+		
 		if (!bearer || !*bearer) {
 			result.ok = 0;
 			result.error_text = dup_cstr("Missing bearer token");
 			return result;
 		}
-
+		
 		if (!jsonData) {
-			result.ok = 0;
-			result.error_text = dup_cstr("Missing JSON payload");
-			return result;
+			//result.ok = 0;
+			//result.error_text = dup_cstr("Missing JSON payload");
+			//return result;
+			jsonData = taffylabs_create_metadata_json();
+
 		}
 
 		const std::string authHeader =

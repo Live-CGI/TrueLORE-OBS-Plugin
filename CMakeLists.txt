@@ -49,7 +49,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/taffy_json_http.cpp
   src/lore-api.cpp
   src/lore-auth.cpp
-
+  src/lore-deviceInfo.cpp
 )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

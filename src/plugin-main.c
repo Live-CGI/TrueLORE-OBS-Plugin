@@ -19,12 +19,14 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <obs-module.h>
 #include <plugin-support.h>
 #include <obs-frontend-api.h>
+#include <string.h>
+
 #include "taffylabs_ui.h"
 #include "taffylabs_settings.h"
 #include "taffylabs_mirror.h"
 #include "taffy_json_http.h"
 #include "lore-api.h"
-
+#include "lore-deviceInfo.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
@@ -44,6 +46,7 @@ static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 
 	case OBS_FRONTEND_EVENT_STREAMING_STARTED:
 		blog(LOG_INFO, "[TaffyLabs] streaming started!");
+		const char *ss = taffylabs_get_streamServer();
 		const char *sk = taffylabs_get_streamKey();
 		if (!sk || sk[0] == '\0') {
 			taffylabs_show_warning("TaffyLabs Stream Key Missing",
@@ -52,7 +55,7 @@ static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 				"Your primary stream has still started, and the stream is treated as if Taffylabs is Disabled.");
 			return;
 		}
-		taffylabs_mirror_start(NULL, sk);
+		taffylabs_mirror_start(ss, sk);
 		break;
 
 	case OBS_FRONTEND_EVENT_STREAMING_STOPPING:
@@ -77,10 +80,18 @@ bool obs_module_load(void)
 	//Get Them Settings!
 	taffylabs_load_settings();
 	taffylabs_ui_init();
-	obs_frontend_add_event_callback(on_frontend_event, NULL);
-	blog(LOG_INFO, "[TaffyLabs] loaded (enabled=%s)",
-	     taffylabs_get_enabled() ? "true" : "false");
 
+	const char *resp = taffylabs_get_unique_device_id_json();
+	if (resp && strstr(resp, "{\"ok\":true")) {
+		blog(LOG_INFO, "[TaffyLabs] Unique Device ID: %s", resp);
+		taffylabs_set_unique_id(resp);
+		taffylabs_save_settings();
+	} else {
+		blog(LOG_WARNING, "[TaffyLabs] Could not get unique device ID: %s", resp ? resp : "no response");
+	}
+
+	obs_frontend_add_event_callback(on_frontend_event, NULL);
+	blog(LOG_INFO, "[TaffyLabs] loaded (enabled=%s)",taffylabs_get_enabled() ? "true" : "false");
 	return true;
 }
 

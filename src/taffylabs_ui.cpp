@@ -328,6 +328,11 @@ static void open_taffylabs_settings_dialog()
 	QHBoxLayout *addNewLayout = new QHBoxLayout();
 	addNewLayout->addStretch();
 
+	QCheckBox *enableAutoNewBroadcast =
+		new QCheckBox("Auto Generate New Broadcasts", dlg);
+	enableAutoNewBroadcast->setChecked(taffylabs_get_autoBroadcast());
+	rootLayout->addWidget(enableAutoNewBroadcast);
+
 	QPushButton *addNewMetadataButton =
 		new QPushButton("Add New Broadcast", dlg);
 	addNewLayout->addWidget(addNewMetadataButton);
@@ -556,11 +561,13 @@ static void open_taffylabs_settings_dialog()
 	QObject::connect(okButton, &QPushButton::clicked,
 		[dlg,
 		 enableLoreStreamCheck,
+		 enableAutoNewBroadcast,
 		 bearerTokenEdit,
 		 broadcastsDropdown,
 		 titleEdit,
 		 descriptionEdit]() {
 			taffylabs_set_enabled(enableLoreStreamCheck->isChecked());
+			taffylabs_set_autoBroadcast(enableAutoNewBroadcast->isChecked());
 
 			taffylabs_set_bearer_token(
 				bearerTokenEdit->text().toUtf8().constData());

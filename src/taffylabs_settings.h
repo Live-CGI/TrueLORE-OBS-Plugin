@@ -12,6 +12,9 @@ void taffylabs_set_enabled(bool enabled);
 bool taffylabs_get_optional_metadata_enabled(void);
 void taffylabs_set_optional_metadata_enabled(bool enabled);
 
+const bool taffylabs_get_autoBroadcast(void);
+void taffylabs_set_autoBroadcast(bool enabled);
+
 const char *taffylabs_get_title(void);
 void taffylabs_set_title(const char *title);
 
@@ -29,6 +32,12 @@ void taffylabs_set_selected_broadcast_object(const char *streamKey);
 
 const char *taffylabs_get_broadcast_array(void);
 void taffylabs_set_broadcast_array(const char *streamKey);
+
+const char *taffylabs_get_unique_id(void);
+void taffylabs_set_unique_id(const char *uniqueID);
+
+const char *taffylabs_get_streamServer(void);
+void taffylabs_set_streamServer(const char *streamServer);
 
 void taffylabs_load_settings(void);
 void taffylabs_save_settings(void);
