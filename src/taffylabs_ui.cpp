@@ -28,6 +28,7 @@ extern "C" {
 #include "taffylabs_settings.h"
 #include "lore-auth.h"
 #include "lore-api.h"
+#include "lore-deviceInfo.h"
 }
 
 static QAction *g_actionSettings = nullptr;
@@ -477,6 +478,16 @@ static void open_taffylabs_settings_dialog()
 		QJsonObject metadata;
 		metadata["title"] = titleEdit->text();
 		metadata["description"] = descriptionEdit->toPlainText();
+		//metadata["deviceInfo"] = taffylabs_get_unique_device_id_json();
+		const char *deviceJson = taffylabs_get_unique_device_id_json();
+
+		QJsonParseError err;
+		auto deviceDoc = QJsonDocument::fromJson(QByteArray(deviceJson), &err);
+
+		metadata["deviceInfo"] =
+			(err.error == QJsonParseError::NoError && deviceDoc.isObject())
+				? QJsonValue(deviceDoc.object())
+				: QJsonValue(QJsonValue::Null);
 
 		QJsonObject payload;
 		payload["metadata"] = metadata;
@@ -485,8 +496,8 @@ static void open_taffylabs_settings_dialog()
 		QByteArray jsonBytes = doc.toJson(QJsonDocument::Compact);
 
 		blog(LOG_INFO,
-		     "[TaffyLabs] Creating new broadcast: title='%s'",
-		     titleEdit->text().toUtf8().constData());
+		     "[TaffyLabs] Creating new broadcast: metadata='%s'",
+		     jsonBytes.constData());
 
 		CreateBroadcastContext *cbCtx = new CreateBroadcastContext();
 		cbCtx->broadcastsDropdown = broadcastsDropdown;
