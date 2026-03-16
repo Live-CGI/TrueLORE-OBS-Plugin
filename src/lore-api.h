@@ -17,7 +17,23 @@ typedef void (*lore_api_callback)(const lore_api_result *result, void *user_data
 /*
  * Example simple GET call.
  */
+const char* random_hex_32();
+
 lore_api_result lore_get(lore_api_callback callback);
+
+lore_api_result lore_authDeviceBegin(
+	const char *hexID, 
+	lore_api_callback callback);
+
+lore_api_result lore_authDeviceContinue(
+	const char *hexID, 
+	const char *stateID,
+	lore_api_callback callback);
+
+lore_api_result lore_authGetBearer(
+	const char *hexID, 
+	const char *state,
+	lore_api_callback callback);
 
 lore_api_result lore_keys(
 	const char *bearer,

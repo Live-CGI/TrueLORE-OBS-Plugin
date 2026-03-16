@@ -50,6 +50,7 @@ bool taffylabs_mirror_start(const char* STREAM_SERVER, const char* STREAM_KEY)
 	if(taffylabs_get_autoBroadcast()){
 		blog(LOG_INFO, "[TaffyLabs] autoBroadcast enabled, creating new broadcast before starting mirror...");
 		lore_api_result rNew = lore_broadcastsCreate(taffylabs_get_bearer_token(), NULL, NULL,NULL);
+		
 		if (!rNew.ok) {
 			blog(LOG_WARNING, "[TaffyLabs] failed to create new broadcast: %s", rNew.error_text ? rNew.error_text : "unknown error");
 		} else {

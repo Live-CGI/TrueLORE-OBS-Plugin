@@ -1,8 +1,12 @@
+#include <string>
+#include <cstdlib>
+
 #include <obs-frontend-api.h>
 
 #include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDialog>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -23,6 +27,14 @@
 #include <QTextEdit>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#ifdef _WIN32
+	#include <windows.h>
+	#define SLEEP_MS(ms) Sleep(ms)
+#else
+	#include <unistd.h>
+	#define SLEEP_MS(ms) usleep((ms) * 1000)
+#endif
 
 extern "C" {
 #include "taffylabs_settings.h"
@@ -99,6 +111,19 @@ static void taffylabs_add_status_indicator()
 		// Appends on the permanent/right side
 		statusBar->addPermanentWidget(g_idLabel);
 	});
+}
+
+void open_browser(const std::string& url)
+{
+	#ifdef _WIN32
+		std::string cmd = "cmd /c start \"\" \"" + url + "\"";
+	#elif __APPLE__
+		std::string cmd = "open \"" + url + "\"";
+	#else
+		std::string cmd = "xdg-open \"" + url + "\"";
+	#endif
+
+    system(cmd.c_str());
 }
 
 static void taffylabs_update_status_indicator(const char *idText)
@@ -284,6 +309,8 @@ static void load_broadcasts_into_dropdown(QComboBox *combo, QWidget *owner)
 	blog(LOG_WARNING, "[TaffyLabs] API Call Status=%ld", immediate.status_code);
 }
 
+
+
 static void open_taffylabs_settings_dialog()
 {
 	if (g_settingsDialog) {
@@ -400,19 +427,53 @@ static void open_taffylabs_settings_dialog()
 
 	// Login button action
 	QObject::connect(loginButton, &QPushButton::clicked,
-		[bearerTokenEdit]() {
+		[bearerTokenEdit,loginButton]() {
 			blog(LOG_INFO, "[TaffyLabs] Login button clicked");
-
+			//Lazy for testing.
+			//WIll lock the UI.
+			//Callback will be on its own thread, so sync calls are safe there.
 			QString apiBaseUrl = "https://dev-api.tome-lore.com";
-
-			auto &auth = lore_auth::AuthManager::instance();
-			QString token = auth.authenticate(apiBaseUrl);
-			blog(LOG_INFO, "[TaffyLabs] Token Returned: %s",
-			     token.toUtf8().constData());
-
-			if (!token.isEmpty())
-				bearerTokenEdit->setText(token);
-		});
+			loginButton->setEnabled(false);
+			loginButton->setText("Generating Authentication URL...");
+			QCoreApplication::processEvents();
+			const char* hexID = random_hex_32();
+			//Ok, adBegin and adContinue need to implement user_data for UI callback ability.
+			//Lets roll syncdronous for now...
+			//lazy but good for testing...
+			//lore_api_result result = lore_authDeviceBegin(hexID, 
+			//	[](const lore_api_result *lar, void *user_data) {
+			lore_api_result lar = lore_authDeviceBegin(hexID,nullptr);
+			if(lar.ok==1){
+				blog(LOG_INFO, "[TaffyLabs] Authentication URL generated successfully!");
+				loginButton->setText("Waiting for Authentication...");
+				QCoreApplication::processEvents();
+				SLEEP_MS(1000);
+				QJsonDocument doc = QJsonDocument::fromJson(QByteArray(lar.body_text));
+				QJsonObject obj = doc.object();
+				QString authUrl = obj.value("url").toString();
+				QString authState = obj.value("state").toString();
+				open_browser(authUrl.toStdString());
+				//just countdown for 5 until the API is working
+				int timeOut = 5;
+				while (timeOut > 0) {
+					timeOut--;
+					//check the state, get the bearer if valid, save if and jump out!
+					//return if done!
+					SLEEP_MS(1000);
+					QCoreApplication::processEvents();
+				}
+				loginButton->setText("Authentication Timed Out!");
+				QCoreApplication::processEvents();
+				SLEEP_MS(1000);
+			}else{
+				blog(LOG_WARNING, "[TaffyLabs] Failed to generate authentication URL");
+				loginButton->setText("Authentication Failed To Get URL!");
+				QCoreApplication::processEvents();
+				SLEEP_MS(1000);
+			}
+			loginButton->setText("Login");
+			loginButton->setEnabled(true);
+	});
 
 	// Broadcast dropdown selection changed
 	QObject::connect(
