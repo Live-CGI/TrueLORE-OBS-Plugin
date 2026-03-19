@@ -39,6 +39,7 @@ void taffylabs_set_unique_id(const char *uniqueID);
 const char *taffylabs_get_streamServer(void);
 void taffylabs_set_streamServer(const char *streamServer);
 
+void taffylabs_clear_settings(void);
 void taffylabs_load_settings(void);
 void taffylabs_save_settings(void);
 

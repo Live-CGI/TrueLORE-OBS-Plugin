@@ -16,6 +16,16 @@ add_library(${CMAKE_PROJECT_NAME} MODULE)
 find_package(libobs REQUIRED)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
 
+find_package(OpenSSL REQUIRED)
+
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    src/aes_string.cpp
+)
+
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
+    OpenSSL::Crypto
+)
+
 if(ENABLE_FRONTEND_API)
   find_package(obs-frontend-api REQUIRED)
   target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
@@ -50,6 +60,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/lore-api.cpp
   src/lore-auth.cpp
   src/lore-deviceInfo.cpp
+  src/aes_string.cpp
 )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

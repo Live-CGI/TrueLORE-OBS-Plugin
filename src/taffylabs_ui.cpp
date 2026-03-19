@@ -41,8 +41,10 @@ extern "C" {
 #include "lore-auth.h"
 #include "lore-api.h"
 #include "lore-deviceInfo.h"
+#include "aes_string.h"
 }
 
+const char* version = "0.1.1";
 static QAction *g_actionSettings = nullptr;
 static QPointer<QDialog> g_settingsDialog = nullptr;
 static QLabel *g_idLabel = nullptr;
@@ -325,7 +327,7 @@ static void open_taffylabs_settings_dialog()
 
 	QDialog *dlg = new QDialog(parent);
 	dlg->setAttribute(Qt::WA_DeleteOnClose, true);
-	dlg->setWindowTitle("TaffyLabs Lore Settings");
+	dlg->setWindowTitle("TaffyLabs Lore Settings v" + QString::fromUtf8(version));
 	dlg->resize(500, 520);
 
 	QVBoxLayout *rootLayout = new QVBoxLayout(dlg);
@@ -343,9 +345,9 @@ static void open_taffylabs_settings_dialog()
 	// Manual bearer token + dropdown
 	QFormLayout *authFormLayout = new QFormLayout();
 
-	QLineEdit *bearerTokenEdit = new QLineEdit(dlg);
-	bearerTokenEdit->setText(taffylabs_get_bearer_token());
-	authFormLayout->addRow("Manual Bearer Token", bearerTokenEdit);
+	//QLineEdit *bearerTokenEdit = new QLineEdit(dlg);
+	//bearerTokenEdit->setText(taffylabs_get_bearer_token());
+	//authFormLayout->addRow("Manual Bearer Token", bearerTokenEdit);
 
 	QComboBox *broadcastsDropdown = new QComboBox(dlg);
 	authFormLayout->addRow("Available Broadcasts", broadcastsDropdown);
@@ -407,30 +409,30 @@ static void open_taffylabs_settings_dialog()
 	rootLayout->addLayout(buttonLayout);
 
 	// Auth manager wiring
-	auto &auth = lore_auth::AuthManager::instance();
+	//auto &auth = lore_auth::AuthManager::instance();
 
-	QObject::connect(&auth, &lore_auth::AuthManager::authenticationSucceeded,
-		bearerTokenEdit,
-		[bearerTokenEdit](const QString &token) {
-			bearerTokenEdit->setText(token);
-			blog(LOG_INFO,
-			     "[TaffyLabs] bearer token updated from login");
-		});
+	//QObject::connect(&auth, &lore_auth::AuthManager::authenticationSucceeded,
+	//	nullptr,
+	//	](const QString &token) {
+	//		bearerTokenEdit->setText(token);
+	//		blog(LOG_INFO,
+	//		     "[TaffyLabs] bearer token updated from login");
+	//	});
 
-	QObject::connect(&auth, &lore_auth::AuthManager::authenticationFailed,
-		bearerTokenEdit,
-		[](const QString &reason) {
-			blog(LOG_WARNING,
-			     "[TaffyLabs] authentication failed: %s",
-			     reason.toUtf8().constData());
-		});
+	//QObject::connect(&auth, &lore_auth::AuthManager::authenticationFailed,
+	//	nullptr,
+	//	[](const QString &reason) {
+	//		blog(LOG_WARNING,
+	//		     "[TaffyLabs] authentication failed: %s",
+	//		     reason.toUtf8().constData());
+	//	});
 
 	// Login button action
 	QObject::connect(loginButton, &QPushButton::clicked,
-		[bearerTokenEdit,loginButton]() {
+		[loginButton]() {
 			blog(LOG_INFO, "[TaffyLabs] Login button clicked");
 			//Lazy for testing.
-			//WIll lock the UI.
+			//Will lock the UI. (WTF OBS, this does NOT lock the ui?!?  What sorcery is this!)
 			//Callback will be on its own thread, so sync calls are safe there.
 			QString apiBaseUrl = "https://dev-api.tome-lore.com";
 			loginButton->setEnabled(false);
@@ -447,24 +449,49 @@ static void open_taffylabs_settings_dialog()
 				blog(LOG_INFO, "[TaffyLabs] Authentication URL generated successfully!");
 				loginButton->setText("Waiting for Authentication...");
 				QCoreApplication::processEvents();
-				SLEEP_MS(1000);
+				//SLEEP_MS(1000);
 				QJsonDocument doc = QJsonDocument::fromJson(QByteArray(lar.body_text));
 				QJsonObject obj = doc.object();
 				QString authUrl = obj.value("url").toString();
 				QString authState = obj.value("state").toString();
 				open_browser(authUrl.toStdString());
-				//just countdown for 5 until the API is working
-				int timeOut = 5;
-				while (timeOut > 0) {
+				int timeOut = 90;
+				bool success = false;
+				while (timeOut > 0 && success == false) {
+					loginButton->setText(QString("Waiting for Authentication...%1s").arg(timeOut));
+					QCoreApplication::processEvents();
 					timeOut--;
 					//check the state, get the bearer if valid, save if and jump out!
+					lore_api_result contResult = lore_authDeviceContinue(hexID, authState.toStdString().c_str(), nullptr);
+					blog(LOG_INFO, "[TaffyLabs] Authentication continue check: status=%ld", contResult.status_code);
+					if(contResult.ok == 1){
+							blog(LOG_INFO, "[TaffyLabs] Authentication successful!");
+							QJsonDocument contDoc = QJsonDocument::fromJson(QByteArray(contResult.body_text));
+							QJsonObject contObj = contDoc.object();
+							QString bearerToken = contObj.value("code").toString();
+							taffylabs_set_bearer_token(bearerToken.toStdString().c_str());
+							taffylabs_save_settings();
+							blog(LOG_INFO, "[TaffyLabs] Bearer token obtained and set successfully!");
+							loginButton->setText("Authentication Complete!");
+							QCoreApplication::processEvents();
+							success = true;
+					}else if(contResult.status_code == 401){
+						//waiting for the response
+					}else if(contResult.status_code == 403){
+							blog(LOG_WARNING, "[TaffyLabs] Authentication Request Failed: Token expired or forbidden!");
+							loginButton->setText("Authentication Failed!");
+							success = false;
+							timeOut = -1;
+					}
 					//return if done!
 					SLEEP_MS(1000);
-					QCoreApplication::processEvents();
 				}
-				loginButton->setText("Authentication Timed Out!");
-				QCoreApplication::processEvents();
-				SLEEP_MS(1000);
+				if(success == false && timeOut == 0){
+					blog(LOG_WARNING, "[TaffyLabs] Authentication timed out after waiting for 90 seconds.");
+					loginButton->setText("Authentication Timed Out!");
+					QCoreApplication::processEvents();
+					SLEEP_MS(1000);
+				}
 			}else{
 				blog(LOG_WARNING, "[TaffyLabs] Failed to generate authentication URL");
 				loginButton->setText("Authentication Failed To Get URL!");
@@ -634,15 +661,11 @@ static void open_taffylabs_settings_dialog()
 		[dlg,
 		 enableLoreStreamCheck,
 		 enableAutoNewBroadcast,
-		 bearerTokenEdit,
 		 broadcastsDropdown,
 		 titleEdit,
 		 descriptionEdit]() {
 			taffylabs_set_enabled(enableLoreStreamCheck->isChecked());
 			taffylabs_set_autoBroadcast(enableAutoNewBroadcast->isChecked());
-
-			taffylabs_set_bearer_token(
-				bearerTokenEdit->text().toUtf8().constData());
 
 			blog(LOG_INFO,
 			     "[TaffyLabs] Selected dropdown value: %s",
@@ -707,8 +730,13 @@ extern "C" void taffylabs_ui_init()
 {
 	taffylabs_add_status_indicator();
 	taffylabs_update_status_indicator("TaffyLabs Lore Initializing!");
-
 	taffylabs_load_settings();
+	if(lore_authConfirm(taffylabs_get_bearer_token())){
+		blog(LOG_INFO, "[TaffyLabs] Authentication confirmed successfully on UI init.");		
+	}else{
+		taffylabs_clear_settings();
+		taffylabs_update_status_indicator("Please Authenticate Taffylabs Lore!");
+	}
 
 	const char *selBroadCast = taffylabs_get_selected_broadcast_object();
 	if (!selBroadCast || !*selBroadCast) {
@@ -735,7 +763,7 @@ extern "C" void taffylabs_ui_init()
 	}
 
 	g_actionSettings = static_cast<QAction *>(
-		obs_frontend_add_tools_menu_qaction("TaffyLabs Lore Settings"));
+		obs_frontend_add_tools_menu_qaction((std::string("TaffyLabs Lore Settings v") + version).c_str()));
 
 	if (!g_actionSettings)
 		return;

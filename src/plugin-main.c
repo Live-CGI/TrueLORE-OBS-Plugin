@@ -78,9 +78,6 @@ bool obs_module_load(void)
 	obs_log(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
 
 	//Get Them Settings!
-	taffylabs_load_settings();
-	taffylabs_ui_init();
-
 	const char *resp = taffylabs_get_unique_device_id_json();
 	if (resp && strstr(resp, "{\"ok\":true")) {
 		blog(LOG_INFO, "[TaffyLabs] Unique Device ID: %s", resp);
@@ -89,6 +86,8 @@ bool obs_module_load(void)
 	} else {
 		blog(LOG_WARNING, "[TaffyLabs] Could not get unique device ID: %s", resp ? resp : "no response");
 	}
+
+	taffylabs_ui_init();
 
 	obs_frontend_add_event_callback(on_frontend_event, NULL);
 	blog(LOG_INFO, "[TaffyLabs] loaded (enabled=%s)",taffylabs_get_enabled() ? "true" : "false");

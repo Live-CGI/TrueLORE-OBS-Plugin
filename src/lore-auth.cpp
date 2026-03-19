@@ -15,7 +15,8 @@ extern "C" {
 #include "taffylabs_settings.h"
 }
 
-namespace lore_auth {
+namespace lore_auth 
+{
 
 static QString randomStateToken()
 {

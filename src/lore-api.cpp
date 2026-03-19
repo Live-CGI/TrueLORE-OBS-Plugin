@@ -80,10 +80,10 @@ char *taffylabs_create_metadata_json(void)
 #endif
 
     char date[11];     // YYYY-MM-DD
-    char timeStr[9];   // HH.mm.ss
+    char timeStr[13];   // HH.mm.ss UTC
 
     strftime(date, sizeof(date), "%Y-%m-%d", &utc);
-    strftime(timeStr, sizeof(timeStr), "%H.%M.%S", &utc);
+    strftime(timeStr, sizeof(timeStr), "%H.%M.%S UTC", &utc);
 
     const char *deviceJson = taffylabs_get_unique_device_id_json();
 
@@ -99,7 +99,7 @@ char *taffylabs_create_metadata_json(void)
         timeStr);
 
     snprintf(description, sizeof(description),
-        "New Broadcast created at %s UTC on %s",
+        "New Broadcast created at %s on %s",
         timeStr,
         date);
 
@@ -121,6 +121,13 @@ char *taffylabs_create_metadata_json(void)
     snprintf(json, needed, format, title, description, deviceJson);
 
     return json;
+}
+
+extern "C" bool lore_authConfirm(const char *bearer)
+{
+	//replace lore_broadcastsGet with a more lightweight endpoint for auth confirmation if possible, this is a bit heavy just to confirm auth but it works for now.
+	lore_api_result result = lore_broadcastsGet(bearer, nullptr, nullptr, nullptr);
+	return result.ok == 1;	
 }
 
 extern "C" const char* random_hex_32()
@@ -147,7 +154,7 @@ extern "C" lore_api_result lore_authDeviceBegin(
 	lore_api_callback callback)
 {
 	std::string strHexId = std::string(hexID);
-	std::string entryPointTmp = kLoreApiUrl + "auth/device?rid=" + strHexId;
+	std::string entryPointTmp = kLoreApiUrl + "auth/device-login?rid=" + strHexId;
 	const char* entryPoint = entryPointTmp.c_str();
 	if (!callback) {
 		taffy_json_http_response resp =
@@ -192,7 +199,7 @@ extern "C" lore_api_result lore_authDeviceContinue(
 {
 	std::string strHexId = std::string(hexID);
 	std::string strState = std::string(stateID);
-	std::string entryPointTemp = kLoreApiUrl + "auth/device?rid=" + strHexId + "&state=" + strState;
+	std::string entryPointTemp = kLoreApiUrl + "auth/device-login/check?rid=" + strHexId + "&state=" + strState;
 	const char* entryPoint = entryPointTemp.c_str();
 	
 	if (!callback) {

@@ -75,6 +75,9 @@ lore_api_result lore_broadcastsUpdate(
 	const char *keyId,
 	const char *jsonData,
 	lore_api_callback callback);
+
+bool lore_authConfirm(
+	const char *bearer);
 	
 /*
  * Free strings allocated inside a lore_api_result.

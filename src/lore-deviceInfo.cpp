@@ -16,6 +16,9 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <comdef.h>
+#include <Wbemidl.h>
+#pragma comment(lib, "wbemuuid.lib")
 #endif
 
 #ifdef __APPLE__
@@ -304,9 +307,120 @@ static std::string detect_location_linux()
 
 static std::string get_windows_uuid()
 {
-	return trim(exec_capture(
-		"powershell -NoProfile -ExecutionPolicy Bypass -Command "
-		"\"(Get-CimInstance -ClassName Win32_ComputerSystemProduct).UUID\""));
+	HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+	bool didInit = SUCCEEDED(hr);
+
+	hr = CoInitializeSecurity(
+		nullptr,
+		-1,
+		nullptr,
+		nullptr,
+		RPC_C_AUTHN_LEVEL_DEFAULT,
+		RPC_C_IMP_LEVEL_IMPERSONATE,
+		nullptr,
+		EOAC_NONE,
+		nullptr);
+
+	// RPC_E_TOO_LATE just means security was already initialized elsewhere.
+	if (FAILED(hr) && hr != RPC_E_TOO_LATE) {
+		if (didInit)
+			CoUninitialize();
+		return {};
+	}
+
+	IWbemLocator *pLoc = nullptr;
+	hr = CoCreateInstance(
+		CLSID_WbemLocator,
+		nullptr,
+		CLSCTX_INPROC_SERVER,
+		IID_IWbemLocator,
+		(LPVOID *)&pLoc);
+
+	if (FAILED(hr) || !pLoc) {
+		if (didInit)
+			CoUninitialize();
+		return {};
+	}
+
+	IWbemServices *pSvc = nullptr;
+	hr = pLoc->ConnectServer(
+		_bstr_t(L"ROOT\\CIMV2"),
+		nullptr,
+		nullptr,
+		nullptr,
+		0,
+		nullptr,
+		nullptr,
+		&pSvc);
+
+	if (FAILED(hr) || !pSvc) {
+		pLoc->Release();
+		if (didInit)
+			CoUninitialize();
+		return {};
+	}
+
+	hr = CoSetProxyBlanket(
+		pSvc,
+		RPC_C_AUTHN_WINNT,
+		RPC_C_AUTHZ_NONE,
+		nullptr,
+		RPC_C_AUTHN_LEVEL_CALL,
+		RPC_C_IMP_LEVEL_IMPERSONATE,
+		nullptr,
+		EOAC_NONE);
+
+	if (FAILED(hr)) {
+		pSvc->Release();
+		pLoc->Release();
+		if (didInit)
+			CoUninitialize();
+		return {};
+	}
+
+	IEnumWbemClassObject *pEnumerator = nullptr;
+	hr = pSvc->ExecQuery(
+		bstr_t("WQL"),
+		bstr_t("SELECT UUID FROM Win32_ComputerSystemProduct"),
+		WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+		nullptr,
+		&pEnumerator);
+
+	if (FAILED(hr) || !pEnumerator) {
+		pSvc->Release();
+		pLoc->Release();
+		if (didInit)
+			CoUninitialize();
+		return {};
+	}
+
+	IWbemClassObject *pObj = nullptr;
+	ULONG uReturn = 0;
+	std::string uuid;
+
+	hr = pEnumerator->Next(WBEM_INFINITE, 1, &pObj, &uReturn);
+	if (SUCCEEDED(hr) && uReturn == 1 && pObj) {
+		VARIANT vtProp;
+		VariantInit(&vtProp);
+
+		hr = pObj->Get(L"UUID", 0, &vtProp, nullptr, nullptr);
+		if (SUCCEEDED(hr) && vtProp.vt == VT_BSTR && vtProp.bstrVal) {
+			_bstr_t b(vtProp.bstrVal);
+			uuid = (const char *)b;
+		}
+
+		VariantClear(&vtProp);
+		pObj->Release();
+	}
+
+	pEnumerator->Release();
+	pSvc->Release();
+	pLoc->Release();
+
+	if (didInit)
+		CoUninitialize();
+
+	return trim(uuid);
 }
 
 static std::string get_mac_uuid()

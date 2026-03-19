@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "aes_string.h"
+
 #define TAFFY_SECTION                  "taffylabs"
 #define KEY_ENABLED                    "enabled"
 #define KEY_AUTO_BROADCAST             "auto_broadcast"
@@ -15,7 +17,7 @@
 #define KEY_STREAMSERVER               "streamServer"
 #define KEY_BROADCAST                  "broadCast"
 #define KEY_UNIQUE_ID                  "uniqueID"
-#define TAFFY_TEXT_MAX 1024
+#define TAFFY_TEXT_MAX 2048
 
 static bool g_enabled = true;
 static bool g_optional_metadata_enabled = false;
@@ -102,14 +104,18 @@ void taffylabs_set_streamKey(const char *streamKey)
 
 const char *taffylabs_get_bearer_token(void)
 {
-	return g_bearer_token;
+	const char* decrypted = taffy_aes_decrypt_string(g_bearer_token);
+	blog(LOG_INFO, "[TaffyLabs] Getting bearer token, decrypted value is '%s'", decrypted ? decrypted : "null");
+	return decrypted;
 }
 
 void taffylabs_set_bearer_token(const char *token)
 {
-	copy_text(g_bearer_token, sizeof(g_bearer_token), token);
+	blog(LOG_INFO, "[TaffyLabs] Setting bearer token to '%s'", token ? token : "null");
+	const char* encrypted = taffy_aes_encrypt_string(token);
+	copy_text(g_bearer_token, sizeof(g_bearer_token), encrypted);
 }
-
+	
 const char *taffylabs_get_selected_broadcast_object(void)
 {
 	return g_selectedBroadcastObject;
@@ -176,7 +182,6 @@ void taffylabs_load_settings(void)
 	// Defaults first
 	g_enabled = true;
 	g_optional_metadata_enabled = false;
-
 	copy_text(g_title, sizeof(g_title), "");
 	copy_text(g_description, sizeof(g_description), "");
 	copy_text(g_streamKey, sizeof(g_streamKey), "");
@@ -184,6 +189,9 @@ void taffylabs_load_settings(void)
 	copy_text(g_BroadcastArray, sizeof(g_BroadcastArray), "");
 	copy_text(g_bearer_token, sizeof(g_bearer_token), "");
 	copy_text(g_UniqueID, sizeof(g_UniqueID), "");
+	copy_text(g_streamServer, sizeof(g_streamServer), "");
+	copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject), "");
+
 	if (!cfg)
 		return;
 
@@ -212,4 +220,24 @@ void taffylabs_load_settings(void)
 
 	copy_text(g_UniqueID, sizeof(g_UniqueID),
 		  config_get_string(cfg, TAFFY_SECTION, KEY_UNIQUE_ID));
+}
+
+void taffylabs_clear_settings(void)
+{
+	config_t *cfg = obs_frontend_get_user_config();
+
+	// Defaults first
+	g_enabled = false;
+	g_optional_metadata_enabled = false;
+	copy_text(g_title, sizeof(g_title), "");
+	copy_text(g_description, sizeof(g_description), "");
+	copy_text(g_streamKey, sizeof(g_streamKey), "");
+	copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject), "");
+	copy_text(g_BroadcastArray, sizeof(g_BroadcastArray), "");
+	copy_text(g_bearer_token, sizeof(g_bearer_token), "");
+	
+	if (!cfg)
+		return;
+
+	taffylabs_save_settings();
 }
