@@ -149,7 +149,7 @@ extern "C" const char* random_hex_32()
     return out.c_str();
 }
 
-extern "C" lore_api_result lore_authDeviceBegin(
+extern "C" lore_api_result lore_deviceLogin(
 	const char* hexID, 
 	lore_api_callback callback)
 {
@@ -192,7 +192,7 @@ extern "C" lore_api_result lore_authDeviceBegin(
 	return result;
 }
 
-extern "C" lore_api_result lore_authDeviceContinue(
+extern "C" lore_api_result lore_deviceLoginCheck(
 	const char* hexID, 
 	const char* stateID, 
 	lore_api_callback callback)
@@ -219,6 +219,52 @@ extern "C" lore_api_result lore_authDeviceContinue(
 		"GET",
 		entryPoint,
 		nullptr,
+		nullptr,
+		0,
+		async_bridge,
+		ctx);
+
+	if (!started) {
+		delete ctx;
+
+		lore_api_result result{};
+		result.ok = 0;
+		result.error_text = dup_cstr("Failed to start async HTTP request");
+		return result;
+	}
+
+	lore_api_result result{};
+	result.ok = 1;
+	return result;
+}
+
+extern "C" lore_api_result lore_deviceLoginCheckExchangeCode(
+	const char* code, 
+	lore_api_callback callback)
+{
+	std::string entryPointTemp = kLoreApiUrl + "auth/device-login/exchange-code";
+	const char* entryPoint = entryPointTemp.c_str();
+
+	std::string strCode = std::string(code);
+	const char* body = ("{\"code\":\"" + strCode + "\"}").c_str();
+	
+	if (!callback) {
+		taffy_json_http_response resp =
+			taffy_json_http_request("POST", entryPoint, body, nullptr, 0);
+
+		lore_api_result result = build_result(resp);
+		taffy_json_http_free(&resp);
+		return result;
+	}
+
+	AsyncContext *ctx = new AsyncContext();
+	ctx->callback = callback;
+	//ctx->user_data = user_data;
+
+	const int started = taffy_json_http_request_async(
+		"POST",
+		entryPoint,
+		body,
 		nullptr,
 		0,
 		async_bridge,

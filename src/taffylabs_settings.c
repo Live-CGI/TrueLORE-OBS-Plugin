@@ -17,7 +17,7 @@
 #define KEY_STREAMSERVER               "streamServer"
 #define KEY_BROADCAST                  "broadCast"
 #define KEY_UNIQUE_ID                  "uniqueID"
-#define TAFFY_TEXT_MAX 2048
+#define TAFFY_TEXT_MAX 					2048
 
 static bool g_enabled = true;
 static bool g_optional_metadata_enabled = false;
@@ -104,16 +104,18 @@ void taffylabs_set_streamKey(const char *streamKey)
 
 const char *taffylabs_get_bearer_token(void)
 {
-	const char* decrypted = taffy_aes_decrypt_string(g_bearer_token);
-	blog(LOG_INFO, "[TaffyLabs] Getting bearer token, decrypted value is '%s'", decrypted ? decrypted : "null");
-	return decrypted;
+	//const char* decrypted = taffy_aes_decrypt_string(g_bearer_token);
+	//return decrypted;
+	blog(LOG_INFO, "[TaffyLabs] Getting bearer token: %s", g_bearer_token);
+	return g_bearer_token;
 }
 
 void taffylabs_set_bearer_token(const char *token)
 {
-	blog(LOG_INFO, "[TaffyLabs] Setting bearer token to '%s'", token ? token : "null");
-	const char* encrypted = taffy_aes_encrypt_string(token);
-	copy_text(g_bearer_token, sizeof(g_bearer_token), encrypted);
+	//const char* encrypted = taffy_aes_encrypt_string(token);
+	//copy_text(g_bearer_token, sizeof(g_bearer_token), encrypted);
+	blog(LOG_INFO, "[TaffyLabs] Setting bearer token: %s", token);
+	copy_text(g_bearer_token, sizeof(g_bearer_token), token);
 }
 	
 const char *taffylabs_get_selected_broadcast_object(void)
@@ -122,8 +124,7 @@ const char *taffylabs_get_selected_broadcast_object(void)
 }
 void taffylabs_set_selected_broadcast_object(const char *broadcastObject)
 {
-	copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject),
-		  broadcastObject);
+	copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject),broadcastObject);
 }
 	
 const char *taffylabs_get_broadcast_array(void){

@@ -444,7 +444,7 @@ static void open_taffylabs_settings_dialog()
 			//lazy but good for testing...
 			//lore_api_result result = lore_authDeviceBegin(hexID, 
 			//	[](const lore_api_result *lar, void *user_data) {
-			lore_api_result lar = lore_authDeviceBegin(hexID,nullptr);
+			lore_api_result lar = lore_deviceLogin(hexID,nullptr);
 			if(lar.ok==1){
 				blog(LOG_INFO, "[TaffyLabs] Authentication URL generated successfully!");
 				loginButton->setText("Waiting for Authentication...");
@@ -462,19 +462,33 @@ static void open_taffylabs_settings_dialog()
 					QCoreApplication::processEvents();
 					timeOut--;
 					//check the state, get the bearer if valid, save if and jump out!
-					lore_api_result contResult = lore_authDeviceContinue(hexID, authState.toStdString().c_str(), nullptr);
+					lore_api_result contResult =  lore_deviceLoginCheck(hexID, authState.toStdString().c_str(), nullptr);
 					blog(LOG_INFO, "[TaffyLabs] Authentication continue check: status=%ld", contResult.status_code);
 					if(contResult.ok == 1){
-							blog(LOG_INFO, "[TaffyLabs] Authentication successful!");
+							//need to add the deviceLoginCheckExchangeCode to get the bearer token, but for now we can just parse it out of the response since its all in one step.
+							blog(LOG_INFO, "[TaffyLabs] Authentication Pair Received!");
 							QJsonDocument contDoc = QJsonDocument::fromJson(QByteArray(contResult.body_text));
 							QJsonObject contObj = contDoc.object();
-							QString bearerToken = contObj.value("code").toString();
-							taffylabs_set_bearer_token(bearerToken.toStdString().c_str());
-							taffylabs_save_settings();
-							blog(LOG_INFO, "[TaffyLabs] Bearer token obtained and set successfully!");
-							loginButton->setText("Authentication Complete!");
-							QCoreApplication::processEvents();
-							success = true;
+							QString exchangeCode = contObj.value("code").toString();
+							blog(LOG_INFO, "[TaffyLabs] Received Exchange Code: %s", exchangeCode.toStdString().c_str());
+							lore_api_result exchangeResult = lore_deviceLoginCheckExchangeCode(exchangeCode.toStdString().c_str(), nullptr);
+							if(exchangeResult.ok == 1){
+								QJsonDocument exchDoc = QJsonDocument::fromJson(QByteArray(exchangeResult.body_text));
+								QJsonObject exchObj = exchDoc.object();
+								QString bearerToken = exchObj.value("accessToken").toString();
+								taffylabs_set_bearer_token(bearerToken.toStdString().c_str());
+								taffylabs_save_settings();
+								blog(LOG_INFO, "[TaffyLabs] Bearer token obtained and set successfully!");
+								loginButton->setText("Authentication Complete!");
+								QCoreApplication::processEvents();
+								success = true;
+							}else{
+								blog(LOG_WARNING, "[TaffyLabs] Authentication Request Failed: Failed to get JWT from Exchange Code! status=%ld", exchangeResult.status_code);
+								loginButton->setText("Authentication Failed!");
+								success = false;
+								timeOut = -1;
+							}
+							
 					}else if(contResult.status_code == 401){
 						//waiting for the response
 					}else if(contResult.status_code == 403){
@@ -498,8 +512,7 @@ static void open_taffylabs_settings_dialog()
 				QCoreApplication::processEvents();
 				SLEEP_MS(1000);
 			}
-			loginButton->setText("Login");
-			loginButton->setEnabled(true);
+			
 	});
 
 	// Broadcast dropdown selection changed
