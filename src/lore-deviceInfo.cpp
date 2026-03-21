@@ -305,6 +305,7 @@ static std::string detect_location_linux()
 	return out;
 }
 
+#ifdef _WIN32
 static std::string get_windows_uuid()
 {
 	HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -422,6 +423,7 @@ static std::string get_windows_uuid()
 
 	return trim(uuid);
 }
+#endif
 
 static std::string get_mac_uuid()
 {

@@ -9,7 +9,6 @@ static obs_output_t  *g_mirror_output  = NULL;
 static obs_service_t *g_mirror_service = NULL;
 
 static const char *DEFAULT_SERVER = "rtmps://dev-rtmp.tome-lore.com:443/live";
-static const char *MIRROR_KEY    = "TAFFY";
 
 /* If you really want to keep exactly one constant string:
    rtmp_target="rtmp://oh.elevensports.live/Live/TAFFY"
@@ -124,3 +123,5 @@ void taffylabs_mirror_stop(void)
 	   Later: you can wait for a “stopped” signal if you want to be extra clean. */
 	mirror_release_all();
 }
+
+// end of file

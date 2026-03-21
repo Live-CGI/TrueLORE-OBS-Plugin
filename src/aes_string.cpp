@@ -217,3 +217,5 @@ extern "C" void taffy_aes_free(char *ptr)
 	if (ptr)
 		std::free(ptr);
 }
+
+// end of file

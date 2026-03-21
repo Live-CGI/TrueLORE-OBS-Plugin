@@ -36,3 +36,5 @@ void taffy_json_http_free(taffy_json_http_response *resp);
 #ifdef __cplusplus
 }
 #endif
+
+// end of file

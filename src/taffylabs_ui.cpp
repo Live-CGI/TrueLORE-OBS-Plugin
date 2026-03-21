@@ -180,7 +180,7 @@ static void populate_broadcast_dropdown_from_json(QComboBox *combo, const QByteA
 		qoBroadcast = sbDoc.object();
 	}	
 
-	for (const QJsonValue &value : arr) {
+	for (const QJsonValue value : arr) {
 		if (!value.isObject())
 			continue;
 		iSelectedIndex++;

@@ -25,6 +25,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
     OpenSSL::Crypto
 )
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    ${OPENSSL_INCLUDE_DIR}
+)
 
 if(ENABLE_FRONTEND_API)
   find_package(obs-frontend-api REQUIRED)

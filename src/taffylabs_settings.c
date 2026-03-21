@@ -241,3 +241,5 @@ void taffylabs_clear_settings(void)
 
 	taffylabs_save_settings();
 }
+
+// end of file

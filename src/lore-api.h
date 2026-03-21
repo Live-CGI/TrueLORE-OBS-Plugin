@@ -1,4 +1,5 @@
 #pragma once
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,3 +88,5 @@ void lore_api_free_result(lore_api_result *result);
 #ifdef __cplusplus
 }
 #endif
+
+// end of file
