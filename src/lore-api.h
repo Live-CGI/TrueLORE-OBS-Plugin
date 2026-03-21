@@ -22,13 +22,17 @@ const char* random_hex_32();
 
 lore_api_result lore_get(lore_api_callback callback);
 
-lore_api_result lore_authDeviceBegin(
+lore_api_result lore_deviceLogin(
 	const char *hexID, 
 	lore_api_callback callback);
 
-lore_api_result lore_authDeviceContinue(
+lore_api_result lore_deviceLoginCheck(
 	const char *hexID, 
 	const char *stateID,
+	lore_api_callback callback);
+
+lore_api_result lore_deviceLoginCheckExchangeCode(
+	const char *code,
 	lore_api_callback callback);
 
 lore_api_result lore_authGetBearer(
