@@ -33,3 +33,6 @@ void taffylabs_device_info_free_string(char *str);
 #ifdef __cplusplus
 }
 #endif
+// EOF
+
+// end of file

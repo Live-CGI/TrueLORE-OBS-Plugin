@@ -44,7 +44,7 @@ static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 		blog(LOG_INFO, "[TaffyLabs] streaming starting...");
 		break;
 
-	case OBS_FRONTEND_EVENT_STREAMING_STARTED:
+	case OBS_FRONTEND_EVENT_STREAMING_STARTED: {
 		blog(LOG_INFO, "[TaffyLabs] streaming started!");
 		const char *ss = taffylabs_get_streamServer();
 		const char *sk = taffylabs_get_streamKey();
@@ -57,6 +57,8 @@ static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 		}
 		taffylabs_mirror_start(ss, sk);
 		break;
+	}
+
 
 	case OBS_FRONTEND_EVENT_STREAMING_STOPPING:
 		blog(LOG_INFO, "[TaffyLabs] streaming stopping...");
@@ -99,3 +101,6 @@ void obs_module_unload(void)
 	taffylabs_ui_shutdown();
 	obs_log(LOG_INFO, "plugin unloaded");
 }
+
+// end of file
+

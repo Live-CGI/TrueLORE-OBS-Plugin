@@ -12,3 +12,5 @@ void taffy_aes_free(char *ptr);
 #ifdef __cplusplus
 }
 #endif
+
+// end of file

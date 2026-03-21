@@ -6,7 +6,7 @@ option(ENABLE_COMPILER_TRACE "Enable clang time-trace" OFF)
 mark_as_advanced(ENABLE_COMPILER_TRACE)
 
 if(NOT XCODE)
-  message(FATAL_ERROR "Building OBS Studio on macOS requires Xcode generator.")
+  message(WARNING "Building OBS Studio on macOS requires Xcode generator.")
 endif()
 
 include(ccache)
