@@ -432,29 +432,24 @@ static void open_taffylabs_settings_dialog()
 		[loginButton]() {
 			blog(LOG_INFO, "[TaffyLabs] Login button clicked");
 			//Lazy for testing.
-			//Will lock the UI. (WTF OBS, this does NOT lock the ui?!?  What sorcery is this!)
-			//Callback will be on its own thread, so sync calls are safe there.
 			QString apiBaseUrl = "https://dev-api.tome-lore.com";
 			loginButton->setEnabled(false);
 			loginButton->setText("Generating Authentication URL...");
 			QCoreApplication::processEvents();
 			const char* hexID = random_hex_32();
-			//Ok, adBegin and adContinue need to implement user_data for UI callback ability.
-			//Lets roll syncdronous for now...
-			//lazy but good for testing...
-			//lore_api_result result = lore_authDeviceBegin(hexID, 
-			//	[](const lore_api_result *lar, void *user_data) {
+			blog(LOG_WARNING, "[TaffyLabs] Authentication HexID: %s", hexID);
 			lore_api_result lar = lore_deviceLogin(hexID,nullptr);
 			if(lar.ok==1){
 				blog(LOG_INFO, "[TaffyLabs] Authentication URL generated successfully!");
 				loginButton->setText("Waiting for Authentication...");
 				QCoreApplication::processEvents();
-				//SLEEP_MS(1000);
 				QJsonDocument doc = QJsonDocument::fromJson(QByteArray(lar.body_text));
 				QJsonObject obj = doc.object();
 				QString authUrl = obj.value("url").toString();
 				QString authState = obj.value("state").toString();
 				open_browser(authUrl.toStdString());
+				blog(LOG_WARNING, "[TaffyLabs] Authentication URL: %s", authUrl.toStdString().c_str());
+				blog(LOG_WARNING, "[TaffyLabs] Authentication State: %s", authState.toStdString().c_str());
 				int timeOut = 90;
 				bool success = false;
 				while (timeOut > 0 && success == false) {
@@ -463,7 +458,6 @@ static void open_taffylabs_settings_dialog()
 					timeOut--;
 					//check the state, get the bearer if valid, save if and jump out!
 					lore_api_result contResult =  lore_deviceLoginCheck(hexID, authState.toStdString().c_str(), nullptr);
-					blog(LOG_INFO, "[TaffyLabs] Authentication continue check: status=%ld", contResult.status_code);
 					if(contResult.ok == 1){
 							//need to add the deviceLoginCheckExchangeCode to get the bearer token, but for now we can just parse it out of the response since its all in one step.
 							blog(LOG_INFO, "[TaffyLabs] Authentication Pair Received!");
@@ -479,11 +473,13 @@ static void open_taffylabs_settings_dialog()
 								taffylabs_set_bearer_token(bearerToken.toStdString().c_str());
 								taffylabs_save_settings();
 								blog(LOG_INFO, "[TaffyLabs] Bearer token obtained and set successfully!");
+								blog(LOG_WARNING, "[TaffyLabs] Authentication successful, bearer token: %s", bearerToken.toStdString().c_str());
 								loginButton->setText("Authentication Complete!");
 								QCoreApplication::processEvents();
 								success = true;
 							}else{
 								blog(LOG_WARNING, "[TaffyLabs] Authentication Request Failed: Failed to get JWT from Exchange Code! status=%ld", exchangeResult.status_code);
+								blog(LOG_WARNING, "%s", exchangeResult.body_text);
 								loginButton->setText("Authentication Failed!");
 								success = false;
 								timeOut = -1;
@@ -493,26 +489,28 @@ static void open_taffylabs_settings_dialog()
 						//waiting for the response
 					}else if(contResult.status_code == 403){
 							blog(LOG_WARNING, "[TaffyLabs] Authentication Request Failed: Token expired or forbidden!");
+							blog(LOG_WARNING, "%s", contResult.body_text);
 							loginButton->setText("Authentication Failed!");
 							success = false;
 							timeOut = -1;
 					}
 					//return if done!
-					SLEEP_MS(1000);
+					SLEEP_MS(3000);
 				}
 				if(success == false && timeOut == 0){
 					blog(LOG_WARNING, "[TaffyLabs] Authentication timed out after waiting for 90 seconds.");
 					loginButton->setText("Authentication Timed Out!");
 					QCoreApplication::processEvents();
-					SLEEP_MS(1000);
+					SLEEP_MS(3000);
 				}
 			}else{
 				blog(LOG_WARNING, "[TaffyLabs] Failed to generate authentication URL");
 				loginButton->setText("Authentication Failed To Get URL!");
 				QCoreApplication::processEvents();
-				SLEEP_MS(1000);
+				SLEEP_MS(3000);
 			}
-			
+		loginButton->setEnabled(true);
+		loginButton->setText("Login");
 	});
 
 	// Broadcast dropdown selection changed

@@ -10,6 +10,7 @@
 #include <utility>
 #include <time.h>
 #include <nlohmann/json.hpp>
+#include <obs-module.h>
 
 using json = nlohmann::json;
 
@@ -140,7 +141,7 @@ extern "C" const char *random_hex_32()
 	return out.c_str();
 }
 
-extern "C" lore_api_result lore_authDeviceBegin(const char *hexID, lore_api_callback callback)
+extern "C" lore_api_result lore_deviceLogin(const char *hexID, lore_api_callback callback)
 {
 	std::string strHexId = std::string(hexID);
 	std::string entryPointTmp = kLoreApiUrl + "auth/device-login?rid=" + strHexId;
@@ -173,7 +174,7 @@ extern "C" lore_api_result lore_authDeviceBegin(const char *hexID, lore_api_call
 	return result;
 }
 
-extern "C" lore_api_result lore_authDeviceContinue(const char *hexID, const char *stateID, lore_api_callback callback)
+extern "C" lore_api_result lore_deviceLoginCheck(const char *hexID, const char *stateID, lore_api_callback callback)
 {
 	std::string strHexId = std::string(hexID);
 	std::string strState = std::string(stateID);
@@ -217,7 +218,7 @@ extern "C" lore_api_result lore_deviceLoginCheckExchangeCode(
 
 	std::string strCode = std::string(code);
 	const char* body = ("{\"code\":\"" + strCode + "\"}").c_str();
-	
+	blog(LOG_WARNING, "[TaffyLabs] Exchanging code for token with code: %s", body);
 	if (!callback) {
 		taffy_json_http_response resp =
 			taffy_json_http_request("POST", entryPoint, body, nullptr, 0);

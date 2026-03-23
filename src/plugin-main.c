@@ -80,6 +80,7 @@ bool obs_module_load(void)
 	obs_log(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
 
 	//Get Them Settings!
+	taffylabs_load_settings();
 	const char *resp = taffylabs_get_unique_device_id_json();
 	if (resp && strstr(resp, "{\"ok\":true")) {
 		blog(LOG_INFO, "[TaffyLabs] Unique Device ID: %s", resp);
