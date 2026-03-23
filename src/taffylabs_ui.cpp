@@ -37,6 +37,7 @@
 #endif
 
 extern "C" {
+#include "plugin-support.h"
 #include "taffylabs_settings.h"
 #include "lore-auth.h"
 #include "lore-api.h"
@@ -327,7 +328,7 @@ static void open_taffylabs_settings_dialog()
 
 	QDialog *dlg = new QDialog(parent);
 	dlg->setAttribute(Qt::WA_DeleteOnClose, true);
-	dlg->setWindowTitle("TaffyLabs Lore Settings v" + QString::fromUtf8(version));
+	dlg->setWindowTitle("TaffyLabs Lore Settings v" + QString::fromUtf8(PLUGIN_VERSION));
 	dlg->resize(500, 520);
 
 	QVBoxLayout *rootLayout = new QVBoxLayout(dlg);
@@ -437,10 +438,8 @@ static void open_taffylabs_settings_dialog()
 			loginButton->setText("Generating Authentication URL...");
 			QCoreApplication::processEvents();
 			const char* hexID = random_hex_32();
-			blog(LOG_WARNING, "[TaffyLabs] Authentication HexID: %s", hexID);
 			lore_api_result lar = lore_deviceLogin(hexID,nullptr);
 			if(lar.ok==1){
-				blog(LOG_INFO, "[TaffyLabs] Authentication URL generated successfully!");
 				loginButton->setText("Waiting for Authentication...");
 				QCoreApplication::processEvents();
 				QJsonDocument doc = QJsonDocument::fromJson(QByteArray(lar.body_text));
@@ -448,8 +447,6 @@ static void open_taffylabs_settings_dialog()
 				QString authUrl = obj.value("url").toString();
 				QString authState = obj.value("state").toString();
 				open_browser(authUrl.toStdString());
-				blog(LOG_WARNING, "[TaffyLabs] Authentication URL: %s", authUrl.toStdString().c_str());
-				blog(LOG_WARNING, "[TaffyLabs] Authentication State: %s", authState.toStdString().c_str());
 				int timeOut = 90;
 				bool success = false;
 				while (timeOut > 0 && success == false) {
@@ -464,7 +461,6 @@ static void open_taffylabs_settings_dialog()
 							QJsonDocument contDoc = QJsonDocument::fromJson(QByteArray(contResult.body_text));
 							QJsonObject contObj = contDoc.object();
 							QString exchangeCode = contObj.value("code").toString();
-							blog(LOG_INFO, "[TaffyLabs] Received Exchange Code: %s", exchangeCode.toStdString().c_str());
 							lore_api_result exchangeResult = lore_deviceLoginCheckExchangeCode(exchangeCode.toStdString().c_str(), nullptr);
 							if(exchangeResult.ok == 1){
 								QJsonDocument exchDoc = QJsonDocument::fromJson(QByteArray(exchangeResult.body_text));
@@ -473,7 +469,6 @@ static void open_taffylabs_settings_dialog()
 								taffylabs_set_bearer_token(bearerToken.toStdString().c_str());
 								taffylabs_save_settings();
 								blog(LOG_INFO, "[TaffyLabs] Bearer token obtained and set successfully!");
-								blog(LOG_WARNING, "[TaffyLabs] Authentication successful, bearer token: %s", bearerToken.toStdString().c_str());
 								loginButton->setText("Authentication Complete!");
 								QCoreApplication::processEvents();
 								success = true;
@@ -774,7 +769,7 @@ extern "C" void taffylabs_ui_init()
 	}
 
 	g_actionSettings = static_cast<QAction *>(
-		obs_frontend_add_tools_menu_qaction((std::string("TaffyLabs Lore Settings v") + version).c_str()));
+		obs_frontend_add_tools_menu_qaction((std::string("TaffyLabs Lore Settings")).c_str()));
 
 	if (!g_actionSettings)
 		return;

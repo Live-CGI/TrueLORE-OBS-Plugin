@@ -218,7 +218,6 @@ extern "C" lore_api_result lore_deviceLoginCheckExchangeCode(
 
 	std::string strCode = std::string(code);
 	const char* body = ("{\"code\":\"" + strCode + "\"}").c_str();
-	blog(LOG_WARNING, "[TaffyLabs] Exchanging code for token with code: %s", body);
 	if (!callback) {
 		taffy_json_http_response resp =
 			taffy_json_http_request("POST", entryPoint, body, nullptr, 0);

@@ -83,7 +83,6 @@ bool obs_module_load(void)
 	taffylabs_load_settings();
 	const char *resp = taffylabs_get_unique_device_id_json();
 	if (resp && strstr(resp, "{\"ok\":true")) {
-		blog(LOG_INFO, "[TaffyLabs] Unique Device ID: %s", resp);
 		taffylabs_set_unique_id(resp);
 		taffylabs_save_settings();
 	} else {

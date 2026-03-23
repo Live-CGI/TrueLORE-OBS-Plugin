@@ -12,7 +12,7 @@
 ; ------------------------------------------------------------------------------
 
 #define MyAppName "TaffyLabs OBS Plugin"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "2026.03.23.1500"
 #define MyAppPublisher "TaffyLabs"
 #define MyAppURL "https://your-site-here.example"
 #define MyPluginDll "taffylabs_mvp_obs.dll"

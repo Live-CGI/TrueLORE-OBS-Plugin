@@ -104,18 +104,16 @@ void taffylabs_set_streamKey(const char *streamKey)
 
 const char *taffylabs_get_bearer_token(void)
 {
-	//const char* decrypted = taffy_aes_decrypt_string(g_bearer_token);
-	//return decrypted;
-	blog(LOG_INFO, "[TaffyLabs] Getting bearer token: %s", g_bearer_token);
-	return g_bearer_token;
+	const char* decrypted = taffy_aes_decrypt_string(g_bearer_token);
+	return decrypted;
+	//return g_bearer_token;
 }
 
 void taffylabs_set_bearer_token(const char *token)
 {
-	//const char* encrypted = taffy_aes_encrypt_string(token);
-	//copy_text(g_bearer_token, sizeof(g_bearer_token), encrypted);
-	blog(LOG_INFO, "[TaffyLabs] Setting bearer token: %s", token);
-	copy_text(g_bearer_token, sizeof(g_bearer_token), token);
+	const char* encrypted = taffy_aes_encrypt_string(token);
+	copy_text(g_bearer_token, sizeof(g_bearer_token), encrypted);
+	//copy_text(g_bearer_token, sizeof(g_bearer_token), token);
 }
 	
 const char *taffylabs_get_selected_broadcast_object(void)
@@ -158,6 +156,7 @@ void taffylabs_set_streamServer(const char *streamServer)
 
 void taffylabs_save_settings(void)
 {
+	blog(LOG_INFO, "[TaffyLabs] Saving settings...");
 	config_t *cfg = obs_frontend_get_user_config();
 	if (!cfg)
 		return;
@@ -178,6 +177,7 @@ void taffylabs_save_settings(void)
 
 void taffylabs_load_settings(void)
 {
+	blog(LOG_INFO, "[TaffyLabs] Loading settings...");
 	config_t *cfg = obs_frontend_get_user_config();
 
 	// Defaults first
@@ -225,6 +225,7 @@ void taffylabs_load_settings(void)
 
 void taffylabs_clear_settings(void)
 {
+	blog(LOG_INFO, "[TaffyLabs] Clearing settings...");
 	config_t *cfg = obs_frontend_get_user_config();
 
 	// Defaults first
