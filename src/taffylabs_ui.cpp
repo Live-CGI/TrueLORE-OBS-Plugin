@@ -30,7 +30,7 @@
 
 #ifdef _WIN32
 	#include <windows.h>
-	#define SLEEP_MS(ms) Sleep(ms)
+	#define SLEEP_MS(ms) SLEEP_MS(ms)
 #else
 	#include <unistd.h>
 	#define SLEEP_MS(ms) usleep((ms) * 1000)
@@ -355,7 +355,7 @@ static void on_device_login_tokenReceived(const lore_api_result *result, void *u
 			[ctx]() {
 				if (ctx->loginButton) {
 					ctx->loginButton->setText("Authentication Succeeded!");
-					Sleep(3000);
+					SLEEP_MS(3000);
 					ctx->loginButton->setText("Login");
 					ctx->loginButton->setEnabled(true);
 				}
@@ -408,7 +408,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 				[ctx]() {
 					if (ctx->loginButton) {
 						ctx->loginButton->setText("Authentication Failed!");
-						Sleep(3000);
+						SLEEP_MS(3000);
 						ctx->loginButton->setText("Login");
 						ctx->loginButton->setEnabled(true);
 						
@@ -418,7 +418,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 				delete ctx;
 		}
 		timer--;
-		Sleep(1000);
+		SLEEP_MS(1000);
 	}
 }
 
@@ -438,7 +438,7 @@ static void on_device_login(const lore_api_result *result, void *user_data)
 				[ctx]() {
 					if (ctx->loginButton) {
 						ctx->loginButton->setText("Authentication Failed!");
-						Sleep(3000);
+						SLEEP_MS(3000);
 						ctx->loginButton->setText("Login");
 						ctx->loginButton->setEnabled(true);
 					}
