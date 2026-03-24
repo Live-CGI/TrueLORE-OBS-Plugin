@@ -141,117 +141,147 @@ extern "C" const char *random_hex_32()
 	return out.c_str();
 }
 
-extern "C" lore_api_result lore_deviceLogin(const char *hexID, lore_api_callback callback)
+extern "C" lore_api_result lore_deviceLogin(
+    const char *hexID,
+    lore_api_callback callback,
+    void *user_data)
 {
-	std::string strHexId = std::string(hexID);
-	std::string entryPointTmp = kLoreApiUrl + "auth/device-login?rid=" + strHexId;
-	const char *entryPoint = entryPointTmp.c_str();
-	if (!callback) {
-		taffy_json_http_response resp = taffy_json_http_request("GET", entryPoint, nullptr, nullptr, 0);
+    std::string strHexId = hexID ? std::string(hexID) : std::string();
+    std::string entryPointTmp = kLoreApiUrl + "auth/device-login?rid=" + strHexId;
 
-		lore_api_result result = build_result(resp);
-		taffy_json_http_free(&resp);
-		return result;
-	}
+    if (!callback) {
+        taffy_json_http_response resp =
+            taffy_json_http_request("GET", entryPointTmp.c_str(), nullptr, nullptr, 0);
 
-	AsyncContext *ctx = new AsyncContext();
-	ctx->callback = callback;
-	//ctx->user_data = user_data;
+        lore_api_result result = build_result(resp);
+        taffy_json_http_free(&resp);
+        return result;
+    }
 
-	const int started = taffy_json_http_request_async("GET", entryPoint, nullptr, nullptr, 0, async_bridge, ctx);
+    AsyncContext *ctx = new AsyncContext();
+    ctx->callback = callback;
+    ctx->user_data = user_data;
+    ctx->method = "GET";
+    ctx->url = entryPointTmp;
 
-	if (!started) {
-		delete ctx;
+    const int started = taffy_json_http_request_async(
+        ctx->method.c_str(),
+        ctx->url.c_str(),
+        nullptr,
+        nullptr,
+        0,
+        async_bridge,
+        ctx);
 
-		lore_api_result result{};
-		result.ok = 0;
-		result.error_text = dup_cstr("Failed to start async HTTP request");
-		return result;
-	}
+    if (!started) {
+        delete ctx;
 
-	lore_api_result result{};
-	result.ok = 1;
-	return result;
+        lore_api_result result{};
+        result.ok = 0;
+        result.error_text = dup_cstr("Failed to start async HTTP request");
+        return result;
+    }
+
+    lore_api_result result{};
+    result.ok = 1;
+    return result;
 }
 
-extern "C" lore_api_result lore_deviceLoginCheck(const char *hexID, const char *stateID, lore_api_callback callback)
+extern "C" lore_api_result lore_deviceLoginCheck(
+    const char *hexID,
+    const char *stateID,
+    lore_api_callback callback,
+    void *user_data)
 {
-	std::string strHexId = std::string(hexID);
-	std::string strState = std::string(stateID);
-	std::string entryPointTemp = kLoreApiUrl + "auth/device-login/check?rid=" + strHexId + "&state=" + strState;
-	const char *entryPoint = entryPointTemp.c_str();
+    std::string strHexId = hexID ? std::string(hexID) : std::string();
+    std::string strState = stateID ? std::string(stateID) : std::string();
+    std::string entryPointTmp =
+        kLoreApiUrl + "auth/device-login/check?rid=" + strHexId + "&state=" + strState;
 
-	if (!callback) {
-		taffy_json_http_response resp = taffy_json_http_request("GET", entryPoint, nullptr, nullptr, 0);
+    if (!callback) {
+        taffy_json_http_response resp =
+            taffy_json_http_request("GET", entryPointTmp.c_str(), nullptr, nullptr, 0);
 
-		lore_api_result result = build_result(resp);
-		taffy_json_http_free(&resp);
-		return result;
-	}
+        lore_api_result result = build_result(resp);
+        taffy_json_http_free(&resp);
+        return result;
+    }
 
-	AsyncContext *ctx = new AsyncContext();
-	ctx->callback = callback;
-	//ctx->user_data = user_data;
+    AsyncContext *ctx = new AsyncContext();
+    ctx->callback = callback;
+    ctx->user_data = user_data;
+    ctx->method = "GET";
+    ctx->url = entryPointTmp;
 
-	const int started = taffy_json_http_request_async("GET", entryPoint, nullptr, nullptr, 0, async_bridge, ctx);
+    const int started = taffy_json_http_request_async(
+        ctx->method.c_str(),
+        ctx->url.c_str(),
+        nullptr,
+        nullptr,
+        0,
+        async_bridge,
+        ctx);
 
-	if (!started) {
-		delete ctx;
+    if (!started) {
+        delete ctx;
 
-		lore_api_result result{};
-		result.ok = 0;
-		result.error_text = dup_cstr("Failed to start async HTTP request");
-		return result;
-	}
+        lore_api_result result{};
+        result.ok = 0;
+        result.error_text = dup_cstr("Failed to start async HTTP request");
+        return result;
+    }
 
-	lore_api_result result{};
-	result.ok = 1;
-	return result;
+    lore_api_result result{};
+    result.ok = 1;
+    return result;
 }
 
 extern "C" lore_api_result lore_deviceLoginCheckExchangeCode(
-	const char* code, 
-	lore_api_callback callback)
+    const char *code,
+    lore_api_callback callback,
+    void *user_data)
 {
-	std::string entryPointTemp = kLoreApiUrl + "auth/device-login/exchange-code";
-	const char* entryPoint = entryPointTemp.c_str();
+    std::string strCode = code ? std::string(code) : std::string();
+    std::string entryPointTmp = kLoreApiUrl + "auth/device-login/exchange-code";
+    std::string bodyJson = std::string("{\"code\":\"") + strCode + "\"}";
 
-	std::string strCode = std::string(code);
-	const char* body = ("{\"code\":\"" + strCode + "\"}").c_str();
-	if (!callback) {
-		taffy_json_http_response resp =
-			taffy_json_http_request("POST", entryPoint, body, nullptr, 0);
+    if (!callback) {
+        taffy_json_http_response resp =
+            taffy_json_http_request("POST", entryPointTmp.c_str(), bodyJson.c_str(), nullptr, 0);
 
-		lore_api_result result = build_result(resp);
-		taffy_json_http_free(&resp);
-		return result;
-	}
+        lore_api_result result = build_result(resp);
+        taffy_json_http_free(&resp);
+        return result;
+    }
 
-	AsyncContext *ctx = new AsyncContext();
-	ctx->callback = callback;
-	//ctx->user_data = user_data;
+    AsyncContext *ctx = new AsyncContext();
+    ctx->callback = callback;
+    ctx->user_data = user_data;
+    ctx->method = "POST";
+    ctx->url = entryPointTmp;
+    ctx->body = bodyJson;
 
-	const int started = taffy_json_http_request_async(
-		"POST",
-		entryPoint,
-		body,
-		nullptr,
-		0,
-		async_bridge,
-		ctx);
+    const int started = taffy_json_http_request_async(
+        ctx->method.c_str(),
+        ctx->url.c_str(),
+        ctx->body.c_str(),
+        nullptr,
+        0,
+        async_bridge,
+        ctx);
 
-	if (!started) {
-		delete ctx;
+    if (!started) {
+        delete ctx;
 
-		lore_api_result result{};
-		result.ok = 0;
-		result.error_text = dup_cstr("Failed to start async HTTP request");
-		return result;
-	}
+        lore_api_result result{};
+        result.ok = 0;
+        result.error_text = dup_cstr("Failed to start async HTTP request");
+        return result;
+    }
 
-	lore_api_result result{};
-	result.ok = 1;
-	return result;
+    lore_api_result result{};
+    result.ok = 1;
+    return result;
 }
 
 extern "C" lore_api_result lore_get(lore_api_callback callback)

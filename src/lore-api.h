@@ -5,12 +5,11 @@
 extern "C" {
 #endif
 
-typedef struct lore_api_result
-{
-	long status_code;
-	char *body_text;
-	int ok;
-	char *error_text;
+typedef struct lore_api_result {
+    int ok;
+    long status_code;
+    char *body_text;
+    char *error_text;
 } lore_api_result;
 
 typedef void (*lore_api_callback)(const lore_api_result *result, void *user_data);
@@ -23,17 +22,20 @@ const char* random_hex_32();
 lore_api_result lore_get(lore_api_callback callback);
 
 lore_api_result lore_deviceLogin(
-	const char *hexID, 
-	lore_api_callback callback);
+    const char *hexID,
+    lore_api_callback callback,
+    void *user_data);
 
 lore_api_result lore_deviceLoginCheck(
-	const char *hexID, 
-	const char *stateID,
-	lore_api_callback callback);
+    const char *hexID,
+    const char *stateID,
+    lore_api_callback callback,
+    void *user_data);
 
 lore_api_result lore_deviceLoginCheckExchangeCode(
-	const char *code,
-	lore_api_callback callback);
+    const char *code,
+    lore_api_callback callback,
+    void *user_data);
 
 lore_api_result lore_authGetBearer(
 	const char *hexID, 
