@@ -83,6 +83,11 @@ lore_api_result lore_broadcastsUpdate(
 	const char *jsonData,
 	lore_api_callback callback);
 
+lore_api_result lore_me(
+	const char *bearer,
+    lore_api_callback callback,
+    void *user_data);
+
 bool lore_authConfirm(
 	const char *bearer);
 	
