@@ -230,7 +230,7 @@ static void lore_broadcasts_dropdown_callback(const lore_api_result *result, voi
 		blog(LOG_WARNING, "[TaffyLabs] lore_broadcasts_dropdown_callback context=%p", user_data);
 		return;
 	}
-	if(!result->ok==1){
+	if(result->ok != 1){
 		blog(LOG_WARNING, "[TaffyLabs] lore_broadcasts_dropdown_callback called with status=%s", result->body_text);		 		
 	}
 
@@ -413,7 +413,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 		}else if(result->status_code == 401){
 			ctx->countDown--;
 			SLEEP_MS(1000);
-			lore_api_result started = lore_deviceLoginCheck(
+			lore_deviceLoginCheck(
 				ctx->hexId.toStdString().c_str(),
 				ctx->authState.toStdString().c_str(),
 				on_device_login_check,
