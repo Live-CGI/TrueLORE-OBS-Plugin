@@ -52,6 +52,7 @@ static QLabel *g_idLabel = nullptr;
 
 struct BroadcastDropdownContext {
 	QPointer<QComboBox> combo;
+	QPointer<QPushButton> loginButton;
 	QPointer<QWidget> owner;
 };
 
@@ -168,9 +169,15 @@ static void populate_broadcast_dropdown_from_json(QComboBox *combo, const QByteA
 	taffylabs_set_broadcast_array(jsonBytes.constData());
 	
 	combo->clear();
-	
-	QJsonParseError parseError;
+	const char* selBroadCast = taffylabs_get_selected_broadcast_object();
+	QJsonParseError parseError, parseError2;
 	QJsonDocument doc = QJsonDocument::fromJson(jsonBytes, &parseError);
+	QJsonDocument selectedDoc = QJsonDocument::fromJson(QByteArray(selBroadCast), &parseError2);
+	QString selId = "NONE SELECTED";
+	if(parseError2.error == QJsonParseError::NoError){
+    	QJsonObject selectedObj = selectedDoc.object();
+		selId = selectedObj.value("id").toString();
+	}
 
 	if (parseError.error != QJsonParseError::NoError) {
 		blog(LOG_WARNING,
@@ -185,11 +192,11 @@ static void populate_broadcast_dropdown_from_json(QComboBox *combo, const QByteA
 	}
 	int iSelectedIndex = -1;
 	
-	const char* selBroadCast = taffylabs_get_selected_broadcast_object();
+	
 	QJsonArray arr = doc.array();
-	QJsonDocument sbDoc = QJsonDocument::fromJson(QByteArray(selBroadCast), &parseError);
+	QJsonDocument sbDoc = QJsonDocument::fromJson(QByteArray(selBroadCast), &parseError2);
 	QJsonObject qoBroadcast = QJsonObject();
-	if (parseError.error == QJsonParseError::NoError) {
+	if (parseError2.error == QJsonParseError::NoError) {
 		qoBroadcast = sbDoc.object();
 	}	
 
@@ -208,31 +215,28 @@ static void populate_broadcast_dropdown_from_json(QComboBox *combo, const QByteA
 
 		// Show title, store id as hidden item data
 		combo->addItem(title, id);
-		if(!qoBroadcast.isEmpty() && obj.value("id").toString() == qoBroadcast.value("id").toString()){
+		if(id == selId){
 			combo->setCurrentIndex(iSelectedIndex);
-		}else{
-			combo->setCurrentIndex(0);
 		}
 	}
 }
 
 static void lore_broadcasts_dropdown_callback(const lore_api_result *result, void *user_data)
 {
-	blog(LOG_WARNING, "[TaffyLabs] lore_broadcasts_dropdown_callback called with status=%ld",
-	     result ? result->status_code : -1);	
-	blog(LOG_WARNING, "[TaffyLabs] lore_broadcasts_dropdown_callback called with status=%s", result->body_text);		 
-	
 	BroadcastDropdownContext *ctx =
 		static_cast<BroadcastDropdownContext *>(user_data);
-
+	
 	if (!ctx){
-		blog(LOG_WARNING, "[TaffyLabs] lore_broadcasts_dropdown_callback context=%p", user_data);		 
+		blog(LOG_WARNING, "[TaffyLabs] lore_broadcasts_dropdown_callback context=%p", user_data);
 		return;
 	}
-		
+	if(!result->ok==1){
+		blog(LOG_WARNING, "[TaffyLabs] lore_broadcasts_dropdown_callback called with status=%s", result->body_text);		 		
+	}
 
 	QPointer<QComboBox> combo = ctx->combo;
 	QPointer<QWidget> owner = ctx->owner;
+	QPointer<QPushButton> loginButton = ctx->loginButton;
 
 	// We no longer need the heap context after this function.
 	// Capture what we need first.
@@ -242,11 +246,13 @@ static void lore_broadcasts_dropdown_callback(const lore_api_result *result, voi
 		return;
 
 	if (!result) {
-		QMetaObject::invokeMethod(owner, [combo]() {
+		QMetaObject::invokeMethod(owner, [combo, loginButton]() {
 			if (!combo)
 				return;
 			combo->clear();
 			combo->addItem("Failed to load broadcasts");
+			if (loginButton)
+				loginButton->setText("Login");
 		}, Qt::QueuedConnection);
 		return;
 	}
@@ -261,30 +267,33 @@ static void lore_broadcasts_dropdown_callback(const lore_api_result *result, voi
 		     result->status_code,
 		     errorText.toUtf8().constData());
 
-		QMetaObject::invokeMethod(owner, [combo, errorText]() {
+		QMetaObject::invokeMethod(owner, [combo, errorText, loginButton]() {
 			if (!combo)
 				return;
 			combo->clear();
 			combo->addItem("Failed to load broadcasts");
+			if (loginButton)
+				loginButton->setText("Login");
 		}, Qt::QueuedConnection);
 
 		return;
 	}
 
 	const QByteArray body = QByteArray(result->body_text);
-
-	QMetaObject::invokeMethod(owner, [combo, body]() {
+	
+	QMetaObject::invokeMethod(owner, [combo, body, loginButton]() {
 		if (!combo)
 			return;
 
 		populate_broadcast_dropdown_from_json(combo, body);
-
+		if (loginButton)
+			loginButton->setText("Logout");
 		if (combo->count() == 0)
 			combo->addItem("No broadcasts found");
 	}, Qt::QueuedConnection);
 }
 
-static void load_broadcasts_into_dropdown(QComboBox *combo, QWidget *owner)
+static void load_broadcasts_into_dropdown(QComboBox *combo, QPushButton *loginButton, QWidget *owner)
 {
 	if (!combo || !owner)
 		return;
@@ -294,9 +303,11 @@ static void load_broadcasts_into_dropdown(QComboBox *combo, QWidget *owner)
 
 	const char *bearer = taffylabs_get_bearer_token();
 	const char *keyId = nullptr;
+    
 
 	BroadcastDropdownContext *ctx = new BroadcastDropdownContext{
 		combo,
+		loginButton,
 		owner
 	};
 
@@ -310,21 +321,21 @@ static void load_broadcasts_into_dropdown(QComboBox *combo, QWidget *owner)
 	// If your API wrapper reports an immediate failure synchronously,
 	// handle that here.
 	if (!immediate.ok) {
-		blog(LOG_WARNING,
+		blog(LOG_ERROR,
 		     "[TaffyLabs] lore_broadcastsGet immediate failure: status=%ld error=%s",
 		     immediate.status_code,
 		     immediate.error_text ? immediate.error_text : "(none)");
 
 		combo->clear();
 		combo->addItem("Failed to load broadcasts");
-
 		delete ctx;
 	}
 
-	blog(LOG_WARNING, "[TaffyLabs] API Call Status=%ld", immediate.status_code);
+	
 }
 
 struct LoginContext {
+		QPointer<QWidget> owner;
 		QPointer<QPushButton> loginButton;
 		QPointer<QComboBox> broadcastsDropdown;
 		QString hexId;
@@ -332,6 +343,8 @@ struct LoginContext {
 		QString authState;
 		QString authCode;
 		QString accessToken;
+		int countDown = 90;
+		bool abort = false;
 	};
 
 
@@ -349,7 +362,7 @@ static void on_device_login_tokenReceived(const lore_api_result *result, void *u
 		QJsonObject obj = doc.object();
 		ctx->accessToken = obj.value("accessToken").toString();
 		taffylabs_set_bearer_token(ctx->accessToken.toStdString().c_str());
-		load_broadcasts_into_dropdown(ctx->broadcastsDropdown, ctx->loginButton);
+		load_broadcasts_into_dropdown(ctx->broadcastsDropdown,  ctx->loginButton, ctx->owner);
 		QMetaObject::invokeMethod(
 			ctx->loginButton,
 			[ctx]() {
@@ -373,13 +386,12 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 		blog(LOG_WARNING, "[TaffyLabs] on_device_login_check called with null context");
 		return;
 	}
-	int timer = 90;
-	
-	while(timer > 0){
+
+	if(ctx->countDown > 0 && ctx->abort == false){
 		QMetaObject::invokeMethod(ctx->loginButton,
-				[ctx, timer]() {
+				[ctx]() {
 					if (ctx->loginButton) {
-						ctx->loginButton->setText(QString("Waiting for Authentication... (%1s)").arg(timer));
+						ctx->loginButton->setText(QString("Waiting for Authentication... (%1s)").arg(ctx->countDown));
 						
 					}
 				},
@@ -399,7 +411,14 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 			delete ctx;
 			return;
 		}else if(result->status_code == 401){
-			//This is the default state while waiting
+			ctx->countDown--;
+			Sleep(1000);
+			lore_api_result started = lore_deviceLoginCheck(
+				ctx->hexId.toStdString().c_str(),
+				ctx->authState.toStdString().c_str(),
+				on_device_login_check,
+				ctx);
+			return;
 		}else{
 			//Some Error condition...
 			blog(LOG_WARNING, "[TaffyLabs] Authentication check failed: status=%ld error=%s", result->status_code, result->error_text ? result->error_text : "(none)");
@@ -410,16 +429,31 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 						ctx->loginButton->setText("Authentication Failed!");
 						SLEEP_MS(3000);
 						ctx->loginButton->setText("Login");
-						ctx->loginButton->setEnabled(true);
-						
+						ctx->loginButton->setEnabled(true);						
 					}
 				},
 				Qt::QueuedConnection);
 				delete ctx;
+				return;
 		}
-		timer--;
-		SLEEP_MS(1000);
+	}else{
+		std::string finalStatus = ctx->abort ? "Aborted by User" : "Timed Out";
+		blog(LOG_WARNING, "[TaffyLabs] Authentication %s", finalStatus.c_str());		
+		QMetaObject::invokeMethod(
+			ctx->loginButton,
+			[ctx, finalStatus]() {
+				if (ctx->loginButton) {
+					ctx->loginButton->setText("Authentication " + QString::fromStdString(finalStatus) + "!");
+					Sleep(3000);
+					ctx->loginButton->setText("Login");
+					ctx->loginButton->setEnabled(true);						
+				}
+			},
+			Qt::QueuedConnection);
+			delete ctx;
 	}
+
+
 }
 
 
@@ -466,6 +500,7 @@ static void on_device_login(const lore_api_result *result, void *user_data)
 	open_browser(ctx->authUrl.toStdString());
 
 	// next async step
+	ctx->countDown = 90; // 90 second timeout for user to complete auth
 	lore_api_result started = lore_deviceLoginCheck(
 		ctx->hexId.toStdString().c_str(),
 		ctx->authState.toStdString().c_str(),
@@ -507,6 +542,16 @@ static void open_taffylabs_settings_dialog()
 	dlg->setWindowTitle("TaffyLabs Lore Settings v" + QString::fromUtf8(PLUGIN_VERSION));
 	dlg->resize(500, 520);
 
+	QObject::connect(dlg, &QDialog::finished,
+    [](int result) {
+        if (result == QDialog::Accepted) {
+            blog(LOG_INFO, "[TaffyLabs] Dialog accepted");
+        } else {
+
+            blog(LOG_INFO, "[TaffyLabs] Dialog rejected/closed");
+        }
+    });
+
 	QVBoxLayout *rootLayout = new QVBoxLayout(dlg);
 
 	// Enable Lore Stream (top)
@@ -516,7 +561,7 @@ static void open_taffylabs_settings_dialog()
 	rootLayout->addWidget(enableLoreStreamCheck);
 
 	// Login button
-	QPushButton *loginButton = new QPushButton("Login", dlg);
+	QPushButton *loginButton = new QPushButton("Please Wait...", dlg);
 	rootLayout->addWidget(loginButton);
 
 	// Manual bearer token + dropdown
@@ -606,11 +651,18 @@ static void open_taffylabs_settings_dialog()
 	
 	
 	QObject::connect(loginButton, &QPushButton::clicked,
-    	[loginButton, broadcastsDropdown]() {
+    	[loginButton, broadcastsDropdown, dlg]() {
+		if(loginButton->text().contains("Logout")){
+			taffylabs_clear_settings();
+			loginButton->setText("Login");
+			load_broadcasts_into_dropdown(broadcastsDropdown, loginButton, dlg);
+			return;
+		}
         loginButton->setEnabled(false);
         loginButton->setText("Generating Authentication URL...");
         const char *hexID = random_hex_32();
         LoginContext *ctx = new LoginContext();
+		ctx->owner = dlg;
         ctx->loginButton = loginButton;
         ctx->broadcastsDropdown = broadcastsDropdown;
         ctx->hexId = QString::fromUtf8(hexID);
@@ -632,10 +684,6 @@ static void open_taffylabs_settings_dialog()
 		broadcastsDropdown,
 		QOverload<int>::of(&QComboBox::currentIndexChanged),
 		[broadcastsDropdown, titleEdit, descriptionEdit](int iSelected) {
-			blog(LOG_INFO,
-			     "[TaffyLabs] Broadcast dropdown selection changed to index %d",
-			     iSelected);
-
 			QJsonDocument doc = QJsonDocument::fromJson(
 				QByteArray(taffylabs_get_broadcast_array()));
 			if (!doc.isArray()) {
@@ -685,7 +733,7 @@ static void open_taffylabs_settings_dialog()
 
 	// Add new broadcast callback
 	QObject::connect(addNewMetadataButton, &QPushButton::clicked,
-			[titleEdit, descriptionEdit, broadcastsDropdown, dlg]() {
+			[titleEdit, descriptionEdit, broadcastsDropdown, loginButton, dlg]() {
 			blog(LOG_INFO, "[TaffyLabs] Add New clicked");
 
 		QJsonObject metadata;
@@ -760,7 +808,7 @@ static void open_taffylabs_settings_dialog()
 						[combo = ctx->broadcastsDropdown,
 						 owner = ctx->owner]() {
 							if (combo && owner)
-								load_broadcasts_into_dropdown(combo, owner);
+								load_broadcasts_into_dropdown(combo, nullptr, owner);
 						},
 						Qt::QueuedConnection);
 				}
@@ -817,13 +865,14 @@ static void open_taffylabs_settings_dialog()
 	});
 
 	g_settingsDialog = dlg;
+	
 	dlg->show();
 	dlg->raise();
 	dlg->activateWindow();
+	
+	load_broadcasts_into_dropdown(broadcastsDropdown, loginButton, dlg);		
 
-	load_broadcasts_into_dropdown(broadcastsDropdown, dlg);
 }
-
 
 
 

@@ -115,6 +115,8 @@ char *taffylabs_create_metadata_json(void)
 	return json;
 }
 
+
+
 extern "C" bool lore_authConfirm(const char *bearer)
 {
 	//replace lore_broadcastsGet with a more lightweight endpoint for auth confirmation if possible, this is a bit heavy just to confirm auth but it works for now.
@@ -139,6 +141,54 @@ extern "C" const char *random_hex_32()
 	}
 
 	return out.c_str();
+}
+
+extern "C" lore_api_result lore_me(
+	const char *bearer,
+    lore_api_callback callback,
+    void *user_data)
+{
+    std::string authHeader = std::string("Authorization: Bearer ") + bearer;
+	const char *headers[] = {
+		authHeader.c_str(),
+	};
+	std::string entryPointTmp = kLoreApiUrl + "users/me";
+
+    if (!callback) {
+        taffy_json_http_response resp =
+            taffy_json_http_request("GET", entryPointTmp.c_str(), nullptr, headers, 1);
+		blog(LOG_INFO, "[TaffyLabs] lore_me sync call returned status=%ld body=%s", resp.status_code, resp.body ? resp.body : "(none)");
+        lore_api_result result = build_result(resp);
+        taffy_json_http_free(&resp);
+        return result;
+    }
+
+    AsyncContext *ctx = new AsyncContext();
+    ctx->callback = callback;
+    ctx->user_data = user_data;
+    ctx->method = "GET";
+    ctx->url = entryPointTmp;
+
+    const int started = taffy_json_http_request_async(
+        ctx->method.c_str(),
+        ctx->url.c_str(),
+        nullptr,
+        headers,
+        1,
+        async_bridge,
+        ctx);
+
+    if (!started) {
+        delete ctx;
+        lore_api_result result{};
+        result.ok = 0;
+        result.error_text = dup_cstr("Failed to start async HTTP request");
+        return result;
+    }
+
+    lore_api_result result{};
+    result.ok = 1;
+    return result;
 }
 
 extern "C" lore_api_result lore_deviceLogin(
