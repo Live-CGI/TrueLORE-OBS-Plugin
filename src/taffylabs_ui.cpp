@@ -956,7 +956,7 @@ extern "C" void taffylabs_ui_shutdown()
 	}
 
 	if (g_actionSettings) {
-		g_actionSettings->disconnect();
+		//g_actionSettings->disconnect();
 		g_actionSettings = nullptr;
 	}
 

@@ -28,13 +28,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
 
 find_package(OpenSSL REQUIRED)
 
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    src/aes_string.cpp
-)
-
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
     OpenSSL::Crypto
 )
+
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${OPENSSL_INCLUDE_DIR}
 )
