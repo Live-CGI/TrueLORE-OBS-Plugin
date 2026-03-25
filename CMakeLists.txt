@@ -11,6 +11,16 @@ include(compilerconfig)
 include(defaults)
 include(helpers)
 
+include(FetchContent)
+
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+
+FetchContent_MakeAvailable(nlohmann_json)
+
 add_library(${CMAKE_PROJECT_NAME} MODULE)
 
 find_package(libobs REQUIRED)
@@ -18,16 +28,15 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
 
 find_package(OpenSSL REQUIRED)
 
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    src/aes_string.cpp
-)
-
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
     OpenSSL::Crypto
 )
+
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${OPENSSL_INCLUDE_DIR}
 )
+
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 
 if(ENABLE_FRONTEND_API)
   find_package(obs-frontend-api REQUIRED)
