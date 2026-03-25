@@ -29,11 +29,11 @@
 #include <QWidget>
 
 #ifdef _WIN32
-	#include <windows.h>
-	#define SLEEP_MS(ms) SLEEP_MS(ms)
+    #include <windows.h>
+    #define SLEEP_MS(ms) Sleep(ms)
 #else
-	#include <unistd.h>
-	#define SLEEP_MS(ms) usleep((ms) * 1000)
+    #include <unistd.h>
+    #define SLEEP_MS(ms) usleep((ms) * 1000)
 #endif
 
 extern "C" {
@@ -412,7 +412,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 			return;
 		}else if(result->status_code == 401){
 			ctx->countDown--;
-			Sleep(1000);
+			SLEEP_MS(1000);
 			lore_api_result started = lore_deviceLoginCheck(
 				ctx->hexId.toStdString().c_str(),
 				ctx->authState.toStdString().c_str(),
@@ -444,7 +444,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 			[ctx, finalStatus]() {
 				if (ctx->loginButton) {
 					ctx->loginButton->setText("Authentication " + QString::fromStdString(finalStatus) + "!");
-					Sleep(3000);
+					SLEEP_MS(3000);
 					ctx->loginButton->setText("Login");
 					ctx->loginButton->setEnabled(true);						
 				}
