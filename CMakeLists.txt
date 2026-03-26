@@ -86,9 +86,11 @@ if(TARGET sodium)
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
         target_compile_options(sodium PRIVATE
             -Wno-error
+            -Wno-error=type-limits
+            -Wno-error=unused-parameter
+            -Wno-error=unused-variable
             -Wno-unused-parameter
             -Wno-unused-variable
-            -Wno-unreachable-code
         )
     endif()
 
