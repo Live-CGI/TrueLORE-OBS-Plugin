@@ -15,6 +15,18 @@ project(${_name} VERSION ${_version})
 # Build options
 # ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+# Xcode compatibility
+# ------------------------------------------------------------------------------
+
+if(CMAKE_GENERATOR STREQUAL "Xcode")
+    # Recent Xcode versions can fail with:
+    # "Explicit modules is enabled but the compiler was not recognized"
+    # particularly in CI or when a compiler launcher/wrapper is involved.
+    set(CMAKE_XCODE_ATTRIBUTE_CLANG_ENABLE_EXPLICIT_MODULES "NO")
+    set(CMAKE_XCODE_ATTRIBUTE_SWIFT_ENABLE_EXPLICIT_MODULES "NO")
+endif()
+
 # Enables OBS frontend API usage for UI-facing functionality.
 option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" ON)
 
