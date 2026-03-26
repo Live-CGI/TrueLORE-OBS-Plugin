@@ -12,7 +12,7 @@ void taffylabs_set_enabled(bool enabled);
 bool taffylabs_get_optional_metadata_enabled(void);
 void taffylabs_set_optional_metadata_enabled(bool enabled);
 
-const bool taffylabs_get_autoBroadcast(void);
+bool taffylabs_get_autoBroadcast(void);
 void taffylabs_set_autoBroadcast(bool enabled);
 
 const char *taffylabs_get_title(void);

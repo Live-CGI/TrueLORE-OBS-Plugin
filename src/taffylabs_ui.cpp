@@ -25,6 +25,7 @@
 #include <QStatusBar>
 #include <QStringList>
 #include <QTextEdit>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -42,7 +43,7 @@ extern "C" {
 #include "lore-auth.h"
 #include "lore-api.h"
 #include "lore-deviceInfo.h"
-#include "aes_string.h"
+
 }
 
 const char* version = "0.1.1";
@@ -349,178 +350,254 @@ struct LoginContext {
 
 
 
-static void on_device_login_tokenReceived(const lore_api_result *result, void *user_data){
-	LoginContext *ctx = static_cast<LoginContext*>(user_data);
-	if (!ctx){
-		blog(LOG_WARNING, "[TaffyLabs] on_device_login_tokenReceived called with null context");
-		return;
-	}
+static void on_device_login_tokenReceived(const lore_api_result *result, void *user_data)
+{
+    LoginContext *ctx = static_cast<LoginContext*>(user_data);
+    if (!ctx) {
+        blog(LOG_WARNING, "[TaffyLabs] on_device_login_tokenReceived called with null context");
+        return;
+    }
 
-	if(result->ok == 1){
-		QJsonDocument doc = QJsonDocument::fromJson(
-		QByteArray(result->body_text ? result->body_text : ""));			
-		QJsonObject obj = doc.object();
-		ctx->accessToken = obj.value("accessToken").toString();
-		taffylabs_set_bearer_token(ctx->accessToken.toStdString().c_str());
-		load_broadcasts_into_dropdown(ctx->broadcastsDropdown,  ctx->loginButton, ctx->owner);
-		QMetaObject::invokeMethod(
-			ctx->loginButton,
-			[ctx]() {
-				if (ctx->loginButton) {
-					ctx->loginButton->setText("Authentication Succeeded!");
-					SLEEP_MS(3000);
-					ctx->loginButton->setText("Login");
-					ctx->loginButton->setEnabled(true);
-				}
-			},
-			Qt::QueuedConnection);
-	}else{
-		blog(LOG_WARNING, "[TaffyLabs] Authentication exchange code failed: status=%ld error=%s", result->status_code, result->error_text ? result->error_text : "(none)");
-		delete ctx;
-	}		
+    if (result->ok == 1) {
+        QJsonDocument doc = QJsonDocument::fromJson(
+            QByteArray(result->body_text ? result->body_text : ""));
+        QJsonObject obj = doc.object();
+        QString accessToken = obj.value("accessToken").toString();
+
+        taffylabs_set_bearer_token(accessToken.toStdString().c_str());
+
+        QPointer<QComboBox> broadcastsDropdown = ctx->broadcastsDropdown;
+        QPointer<QPushButton> loginButton = ctx->loginButton;
+        QPointer<QWidget> owner = ctx->owner;
+
+        QMetaObject::invokeMethod(
+            qApp,
+            [broadcastsDropdown, loginButton, owner, accessToken]() {
+                load_broadcasts_into_dropdown(broadcastsDropdown, loginButton, owner);
+
+                if (loginButton) {
+                    loginButton->setText("Authentication Succeeded!");
+                    loginButton->setEnabled(true);
+
+                    QTimer::singleShot(3000, loginButton, [loginButton]() {
+                        if (loginButton) {
+                            loginButton->setText("Login");
+                        }
+                    });
+                }
+            },
+            Qt::QueuedConnection);
+
+        delete ctx;
+    } else {
+        blog(LOG_WARNING,
+             "[TaffyLabs] Authentication exchange code failed: status=%ld error=%s",
+             result->status_code,
+             result->error_text ? result->error_text : "(none)");
+        delete ctx;
+    }
 }
 
-static void on_device_login_check(const lore_api_result *result, void *user_data){
+static void on_device_login_check(const lore_api_result *result, void *user_data)
+{
 	LoginContext *ctx = static_cast<LoginContext*>(user_data);
-	if (!ctx){
+	if (!ctx) {
 		blog(LOG_WARNING, "[TaffyLabs] on_device_login_check called with null context");
 		return;
 	}
 
-	if(ctx->countDown > 0 && ctx->abort == false){
-		QMetaObject::invokeMethod(ctx->loginButton,
-				[ctx]() {
-					if (ctx->loginButton) {
-						ctx->loginButton->setText(QString("Waiting for Authentication... (%1s)").arg(ctx->countDown));
-						
+	QPointer<QPushButton> loginButton = ctx->loginButton;
+
+	if (ctx->countDown > 0 && ctx->abort == false) {
+		int countDown = ctx->countDown;
+
+		if (loginButton) {
+			QMetaObject::invokeMethod(
+				qApp,
+				[loginButton, countDown]() {
+					if (loginButton) {
+						loginButton->setText(
+							QString("Waiting for Authentication... (%1s)").arg(countDown));
 					}
 				},
 				Qt::QueuedConnection);
-				
-		if(result->ok == 1){
+		}
+
+		if (result->ok == 1) {
 			blog(LOG_INFO, "[TaffyLabs] Authentication Code Received!");
+
 			QJsonDocument doc = QJsonDocument::fromJson(
-			QByteArray(result->body_text ? result->body_text : ""));			
+				QByteArray(result->body_text ? result->body_text : ""));
 			QJsonObject obj = doc.object();
 			ctx->authCode = obj.value("code").toString();
-			//on_device_login_check_exchange_code(result, user_data);
+
+			QString authCode = ctx->authCode;
+
 			lore_deviceLoginCheckExchangeCode(
-				ctx->authCode.toStdString().c_str(),
+				authCode.toStdString().c_str(),
 				on_device_login_tokenReceived,
 				ctx);
-			delete ctx;
+
+			// IMPORTANT:
+			// Do NOT delete ctx here. Ownership passes to the next async callback.
 			return;
-		}else if(result->status_code == 401){
+		}
+		else if (result->status_code == 401) {
 			ctx->countDown--;
+
+			// This sleep is on the background thread, which is okay if intentional.
 			SLEEP_MS(1000);
+
+			QString hexId = ctx->hexId;
+			QString authState = ctx->authState;
+
 			lore_deviceLoginCheck(
-				ctx->hexId.toStdString().c_str(),
-				ctx->authState.toStdString().c_str(),
+				hexId.toStdString().c_str(),
+				authState.toStdString().c_str(),
 				on_device_login_check,
 				ctx);
 			return;
-		}else{
-			//Some Error condition...
-			blog(LOG_WARNING, "[TaffyLabs] Authentication check failed: status=%ld error=%s", result->status_code, result->error_text ? result->error_text : "(none)");
+		}
+		else {
+			blog(LOG_WARNING,
+				"[TaffyLabs] Authentication check failed: status=%ld error=%s",
+				result->status_code,
+				result->error_text ? result->error_text : "(none)");
+
+			if (loginButton) {
+				QMetaObject::invokeMethod(
+					qApp,
+					[loginButton]() {
+						if (!loginButton)
+							return;
+
+						loginButton->setText("Authentication Failed!");
+						loginButton->setEnabled(true);
+
+						QTimer::singleShot(3000, loginButton, [loginButton]() {
+							if (loginButton)
+								loginButton->setText("Login");
+						});
+					},
+					Qt::QueuedConnection);
+			}
+
+			delete ctx;
+			return;
+		}
+	}
+	else {
+		QString finalStatus = ctx->abort ? "Aborted by User" : "Timed Out";
+		blog(LOG_WARNING, "[TaffyLabs] Authentication %s", finalStatus.toUtf8().constData());
+
+		if (loginButton) {
 			QMetaObject::invokeMethod(
-				ctx->loginButton,
-				[ctx]() {
-					if (ctx->loginButton) {
-						ctx->loginButton->setText("Authentication Failed!");
-						SLEEP_MS(3000);
-						ctx->loginButton->setText("Login");
-						ctx->loginButton->setEnabled(true);						
-					}
+				qApp,
+				[loginButton, finalStatus]() {
+					if (!loginButton)
+						return;
+
+					loginButton->setText("Authentication " + finalStatus + "!");
+					loginButton->setEnabled(true);
+
+					QTimer::singleShot(3000, loginButton, [loginButton]() {
+						if (loginButton)
+							loginButton->setText("Login");
+					});
 				},
 				Qt::QueuedConnection);
-				delete ctx;
-				return;
 		}
-	}else{
-		std::string finalStatus = ctx->abort ? "Aborted by User" : "Timed Out";
-		blog(LOG_WARNING, "[TaffyLabs] Authentication %s", finalStatus.c_str());		
-		QMetaObject::invokeMethod(
-			ctx->loginButton,
-			[ctx, finalStatus]() {
-				if (ctx->loginButton) {
-					ctx->loginButton->setText("Authentication " + QString::fromStdString(finalStatus) + "!");
-					SLEEP_MS(3000);
-					ctx->loginButton->setText("Login");
-					ctx->loginButton->setEnabled(true);						
-				}
-			},
-			Qt::QueuedConnection);
-			delete ctx;
+
+		delete ctx;
 	}
-
-
 }
 
 
 static void on_device_login(const lore_api_result *result, void *user_data)
 {
 	LoginContext *ctx = static_cast<LoginContext*>(user_data);
-	if (!ctx){
+	if (!ctx) {
 		blog(LOG_WARNING, "[TaffyLabs] on_device_login called with null context");
 		return;
 	}
 
+	// Copy out only what we need from ctx before any async/UI handoff.
+	QPointer<QPushButton> loginButton = ctx->loginButton;
+
 	if (!result || !result->ok) {
-		if (ctx->loginButton) {
+		if (loginButton) {
 			QMetaObject::invokeMethod(
-				ctx->loginButton,
-				[ctx]() {
-					if (ctx->loginButton) {
-						ctx->loginButton->setText("Authentication Failed!");
-						SLEEP_MS(3000);
-						ctx->loginButton->setText("Login");
-						ctx->loginButton->setEnabled(true);
-					}
+				qApp,
+				[loginButton]() {
+					if (!loginButton)
+						return;
+
+					loginButton->setText("Authentication Failed!");
+					loginButton->setEnabled(true);
+
+					QTimer::singleShot(3000, loginButton, [loginButton]() {
+						if (loginButton)
+							loginButton->setText("Login");
+					});
 				},
 				Qt::QueuedConnection);
 		}
+
 		delete ctx;
 		return;
 	}
 
 	QJsonDocument doc = QJsonDocument::fromJson(
-	QByteArray(result->body_text ? result->body_text : ""));
+		QByteArray(result->body_text ? result->body_text : ""));
 	QJsonObject obj = doc.object();
+
 	ctx->authUrl = obj.value("url").toString();
 	ctx->authState = obj.value("state").toString();
-	if (ctx->loginButton) {
+
+	QString authUrl = ctx->authUrl;
+	QString authState = ctx->authState;
+	QString hexId = ctx->hexId;
+
+	if (loginButton) {
 		QMetaObject::invokeMethod(
-			ctx->loginButton,
-			[ctx]() {
-				if (ctx->loginButton)
-					ctx->loginButton->setText("Waiting for Authentication...");
+			qApp,
+			[loginButton]() {
+				if (loginButton)
+					loginButton->setText("Waiting for Authentication...");
 			},
 			Qt::QueuedConnection);
 	}
-	open_browser(ctx->authUrl.toStdString());
+
+	open_browser(authUrl.toStdString());
 
 	// next async step
 	ctx->countDown = 90; // 90 second timeout for user to complete auth
 	lore_api_result started = lore_deviceLoginCheck(
-		ctx->hexId.toStdString().c_str(),
-		ctx->authState.toStdString().c_str(),
+		hexId.toStdString().c_str(),
+		authState.toStdString().c_str(),
 		on_device_login_check,
 		ctx);
 
 	if (!started.ok) {
-		if (ctx->loginButton) {
+		if (loginButton) {
 			QMetaObject::invokeMethod(
-				ctx->loginButton,
-				[ctx]() {
-					if (ctx->loginButton) {
-						ctx->loginButton->setText("Authentication Failed!");
-						ctx->loginButton->setEnabled(true);
-					}
+				qApp,
+				[loginButton]() {
+					if (!loginButton)
+						return;
+
+					loginButton->setText("Authentication Failed!");
+					loginButton->setEnabled(true);
+
+					QTimer::singleShot(3000, loginButton, [loginButton]() {
+						if (loginButton)
+							loginButton->setText("Login");
+					});
 				},
 				Qt::QueuedConnection);
 		}
-		blog(LOG_WARNING, "[TaffyLabs] Failed to start device login check");
 
+		blog(LOG_WARNING, "[TaffyLabs] Failed to start device login check");
 		delete ctx;
 	}
 }
