@@ -68,6 +68,29 @@ set(SODIUM_DISABLE_TESTS ON CACHE BOOL "Disable libsodium tests" FORCE)
 FetchContent_MakeAvailable(nlohmann_json libsodium)
 
 # ------------------------------------------------------------------------------
+# Third-party dependency warning policy adjustments
+# ------------------------------------------------------------------------------
+
+if(TARGET sodium)
+    # MSVC warnings coming from libsodium itself
+    if(MSVC)
+        target_compile_options(sodium PRIVATE
+            /WX-
+            /wd4244
+            /wd4319
+        )
+    endif()
+
+    # Clang / AppleClang warnings coming from libsodium itself
+    if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
+        target_compile_options(sodium PRIVATE
+            -Wno-error
+            -Wno-unused-parameter
+        )
+    endif()
+endif()
+
+# ------------------------------------------------------------------------------
 # Dependency warning policy adjustments
 # ------------------------------------------------------------------------------
 
