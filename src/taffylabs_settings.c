@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "aes_string.h"
+#include "crypto_string.h"
 
 #define TAFFY_SECTION                  "taffylabs"
 #define KEY_ENABLED                    "enabled"
@@ -104,14 +104,14 @@ void taffylabs_set_streamKey(const char *streamKey)
 
 const char *taffylabs_get_bearer_token(void)
 {
-	const char* decrypted = taffy_aes_decrypt_string(g_bearer_token);
+	const char* decrypted = taffylabs_decrypt_string(g_bearer_token);
 	return decrypted;
 	//return g_bearer_token;
 }
 
 void taffylabs_set_bearer_token(const char *token)
 {
-	const char* encrypted = taffy_aes_encrypt_string(token);
+	const char* encrypted = taffylabs_encrypt_string(token);
 	copy_text(g_bearer_token, sizeof(g_bearer_token), encrypted);
 	//copy_text(g_bearer_token, sizeof(g_bearer_token), token);
 }

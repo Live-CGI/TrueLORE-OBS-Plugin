@@ -42,7 +42,7 @@ extern "C" {
 #include "lore-auth.h"
 #include "lore-api.h"
 #include "lore-deviceInfo.h"
-#include "aes_string.h"
+
 }
 
 const char* version = "0.1.1";
