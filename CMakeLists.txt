@@ -72,22 +72,26 @@ FetchContent_MakeAvailable(nlohmann_json libsodium)
 # ------------------------------------------------------------------------------
 
 if(TARGET sodium)
-    # MSVC
     if(MSVC)
         target_compile_options(sodium PRIVATE
             /WX-
             /wd4244
             /wd4319
+            /wd4267
         )
     endif()
 
-    # Clang / AppleClang
     if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
         target_compile_options(sodium PRIVATE
             -Wno-error
             -Wno-unused-parameter
             -Wno-unused-variable
+            -Wno-unreachable-code
         )
+    endif()
+
+    if(CMAKE_GENERATOR STREQUAL "Xcode")
+        set_property(TARGET sodium PROPERTY XCODE_ATTRIBUTE_GCC_TREAT_WARNINGS_AS_ERRORS NO)
     endif()
 endif()
 
