@@ -68,10 +68,11 @@ set(SODIUM_DISABLE_TESTS ON CACHE BOOL "Disable libsodium tests" FORCE)
 FetchContent_MakeAvailable(nlohmann_json libsodium)
 
 # ------------------------------------------------------------------------------
-# Libsodium dependency warning policy adjustments
+# Libsodium warning policy adjustments
 # ------------------------------------------------------------------------------
 
 if(TARGET sodium)
+    # MSVC
     if(MSVC)
         target_compile_options(sodium PRIVATE
             /WX-
@@ -81,6 +82,17 @@ if(TARGET sodium)
         )
     endif()
 
+    # GCC (Linux)
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(sodium PRIVATE
+            -Wno-error
+            -Wno-unused-parameter
+            -Wno-unused-variable
+            -Wno-unreachable-code
+        )
+    endif()
+
+    # Clang / AppleClang
     if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
         target_compile_options(sodium PRIVATE
             -Wno-error
@@ -90,6 +102,7 @@ if(TARGET sodium)
         )
     endif()
 
+    # Xcode target-level warning-as-error override
     if(CMAKE_GENERATOR STREQUAL "Xcode")
         set_property(TARGET sodium PROPERTY XCODE_ATTRIBUTE_GCC_TREAT_WARNINGS_AS_ERRORS NO)
     endif()
