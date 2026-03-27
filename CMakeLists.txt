@@ -33,6 +33,8 @@ option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" ON)
 # Enables Qt-based functionality.
 option(ENABLE_QT "Use Qt functionality" ON)
 
+
+
 # ------------------------------------------------------------------------------
 # Shared project configuration
 # ------------------------------------------------------------------------------
@@ -110,12 +112,24 @@ if(TARGET sodium)
     endif()
 endif()
 
+
+
 # ------------------------------------------------------------------------------
 # Target definition
 # ------------------------------------------------------------------------------
 
 # Build the OBS plugin as a module.
 add_library(${CMAKE_PROJECT_NAME} MODULE)
+
+# ------------------------------------------------------------------------------
+# ASAN support for the plugin itself, which is useful for detecting memory issues in
+# ------------------------------------------------------------------------------
+option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+
+if(ENABLE_ASAN AND MSVC)
+    target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /fsanitize=address /Zi)
+    target_link_options(${CMAKE_PROJECT_NAME} PRIVATE /fsanitize=address /INCREMENTAL:NO)
+endif()
 
 # ------------------------------------------------------------------------------
 # Core OBS dependency
