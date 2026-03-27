@@ -47,7 +47,6 @@ static lore_api_result build_result(const taffy_json_http_response &resp)
 struct AsyncContext {
 	lore_api_callback callback = nullptr;
 	void *user_data = nullptr;
-
 	std::string method;
 	std::string url;
 	std::string body;
@@ -245,8 +244,7 @@ extern "C" lore_api_result lore_deviceLoginCheck(
 {
     std::string strHexId = hexID ? std::string(hexID) : std::string();
     std::string strState = stateID ? std::string(stateID) : std::string();
-    std::string entryPointTmp =
-        kLoreApiUrl + "auth/device-login/check?rid=" + strHexId + "&state=" + strState;
+    std::string entryPointTmp = kLoreApiUrl + "auth/device-login/check?rid=" + strHexId + "&state=" + strState;
 
     if (!callback) {
         taffy_json_http_response resp =
@@ -274,7 +272,6 @@ extern "C" lore_api_result lore_deviceLoginCheck(
 
     if (!started) {
         delete ctx;
-
         lore_api_result result{};
         result.ok = 0;
         result.error_text = dup_cstr("Failed to start async HTTP request");

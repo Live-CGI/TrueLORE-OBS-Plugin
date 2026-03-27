@@ -4,6 +4,8 @@ param(
 
   [string]$Preset = "windows-x64",
 
+  [switch]$Asan,
+
   # Change this if OBS is installed elsewhere
   [string]$ObsExe = "C:\Program Files\obs-studio\bin\64bit\obs64.exe"
 )
@@ -18,8 +20,27 @@ $stageRoot    = Join-Path $repo "_obs_stage"
 $stagePlugins = Join-Path $stageRoot "obs-plugins\64bit"
 $stageData    = Join-Path $stageRoot "data\obs-plugins\taffylabs_mvp_obs"
 
+# Configure args
+$configureArgs = @(
+  "--preset", $Preset,
+  "-DENABLE_QT=ON",
+  "-DENABLE_FRONTEND_API=ON"
+)
+
+if ($Asan) {
+  $configureArgs += "-DENABLE_ASAN=ON"
+} else {
+  $configureArgs += "-DENABLE_ASAN=OFF"
+}
+
 Write-Host "== Configure ==" -ForegroundColor Cyan
-cmake --preset $Preset -DENABLE_QT=ON -DENABLE_FRONTEND_API=ON
+if ($Asan) {
+  Write-Host "AddressSanitizer: ON" -ForegroundColor Yellow
+} else {
+  Write-Host "AddressSanitizer: OFF" -ForegroundColor Yellow
+}
+
+& cmake @configureArgs
 if ($LASTEXITCODE -ne 0) {
   throw "CMake configure failed."
 }
@@ -74,5 +95,31 @@ if (!(Test-Path $ObsExe)) {
 $env:OBS_PLUGINS_PATH = $stagePlugins
 $env:OBS_PLUGINS_DATA_PATH = (Join-Path $stageRoot "data")
 
-Write-Host "== Launch OBS ==" -ForegroundColor Green
-Start-Process -FilePath $ObsExe -WorkingDirectory (Split-Path -Parent $ObsExe)
+if ($Asan) {
+  # Make ASan stop immediately on the first error for easier debugging.
+  # MSVC ASan supports runtime options through ASAN_OPTIONS.
+  $env:ASAN_OPTIONS = "halt_on_error=1"
+  Write-Host "ASAN_OPTIONS=$env:ASAN_OPTIONS" -ForegroundColor Yellow
+  Write-Host "ASAN_SAVE_DUMPS=$env:ASAN_SAVE_DUMPS" -ForegroundColor Yellow
+} else {
+  Remove-Item Env:ASAN_OPTIONS -ErrorAction SilentlyContinue
+}
+
+#Write-Host "== Launch OBS ==" -ForegroundColor Green
+#Start-Process -FilePath $ObsExe -WorkingDirectory (Split-Path -Parent $ObsExe)
+
+Write-Host "== Launch OBS CMD Out==" -ForegroundColor Green
+
+$obsDir = Split-Path -Parent $ObsExe
+Push-Location $obsDir
+try {
+    & $ObsExe
+    $obsExitCode = $LASTEXITCODE
+}
+finally {
+    Pop-Location
+}
+
+if ($null -ne $obsExitCode) {
+    exit $obsExitCode
+}

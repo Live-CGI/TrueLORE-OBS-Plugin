@@ -336,17 +336,17 @@ static void load_broadcasts_into_dropdown(QComboBox *combo, QPushButton *loginBu
 }
 
 struct LoginContext {
-		QPointer<QWidget> owner;
-		QPointer<QPushButton> loginButton;
-		QPointer<QComboBox> broadcastsDropdown;
-		QString hexId;
-		QString authUrl;
-		QString authState;
-		QString authCode;
-		QString accessToken;
-		int countDown = 90;
-		bool abort = false;
-	};
+    QPointer<QWidget> owner;
+    QPointer<QPushButton> loginButton;
+    QPointer<QComboBox> broadcastsDropdown;
+    std::string hexId;
+    std::string authUrl;
+    std::string authState;
+    std::string authCode;
+    std::string accessToken;
+    int countDown = 90;
+    bool abort = false;
+};
 
 
 
@@ -362,9 +362,9 @@ static void on_device_login_tokenReceived(const lore_api_result *result, void *u
         QJsonDocument doc = QJsonDocument::fromJson(
             QByteArray(result->body_text ? result->body_text : ""));
         QJsonObject obj = doc.object();
-        QString accessToken = obj.value("accessToken").toString();
+        std::string accessToken = obj.value("accessToken").toString().toStdString();
 
-        taffylabs_set_bearer_token(accessToken.toStdString().c_str());
+        taffylabs_set_bearer_token(accessToken.c_str());
 
         QPointer<QComboBox> broadcastsDropdown = ctx->broadcastsDropdown;
         QPointer<QPushButton> loginButton = ctx->loginButton;
@@ -387,7 +387,6 @@ static void on_device_login_tokenReceived(const lore_api_result *result, void *u
                 }
             },
             Qt::QueuedConnection);
-
         delete ctx;
     } else {
         blog(LOG_WARNING,
@@ -429,12 +428,12 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 			QJsonDocument doc = QJsonDocument::fromJson(
 				QByteArray(result->body_text ? result->body_text : ""));
 			QJsonObject obj = doc.object();
-			ctx->authCode = obj.value("code").toString();
+			ctx->authCode = obj.value("code").toString().toStdString();
 
-			QString authCode = ctx->authCode;
+			std::string authCode = ctx->authCode;
 
 			lore_deviceLoginCheckExchangeCode(
-				authCode.toStdString().c_str(),
+				authCode.c_str(),
 				on_device_login_tokenReceived,
 				ctx);
 
@@ -448,12 +447,12 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 			// This sleep is on the background thread, which is okay if intentional.
 			SLEEP_MS(1000);
 
-			QString hexId = ctx->hexId;
-			QString authState = ctx->authState;
+			std::string hexId = ctx->hexId;
+			std::string authState = ctx->authState;
 
 			lore_deviceLoginCheck(
-				hexId.toStdString().c_str(),
-				authState.toStdString().c_str(),
+				hexId.c_str(),
+				authState.c_str(),
 				on_device_login_check,
 				ctx);
 			return;
@@ -551,12 +550,12 @@ static void on_device_login(const lore_api_result *result, void *user_data)
 		QByteArray(result->body_text ? result->body_text : ""));
 	QJsonObject obj = doc.object();
 
-	ctx->authUrl = obj.value("url").toString();
-	ctx->authState = obj.value("state").toString();
+	ctx->authUrl = obj.value("url").toString().toStdString();
+	ctx->authState = obj.value("state").toString().toStdString();
 
-	QString authUrl = ctx->authUrl;
-	QString authState = ctx->authState;
-	QString hexId = ctx->hexId;
+	std::string authUrl = ctx->authUrl;
+	std::string authState = ctx->authState;
+	std::string hexId = ctx->hexId;
 
 	if (loginButton) {
 		QMetaObject::invokeMethod(
@@ -568,13 +567,13 @@ static void on_device_login(const lore_api_result *result, void *user_data)
 			Qt::QueuedConnection);
 	}
 
-	open_browser(authUrl.toStdString());
+	open_browser(authUrl.c_str());
 
 	// next async step
 	ctx->countDown = 90; // 90 second timeout for user to complete auth
 	lore_api_result started = lore_deviceLoginCheck(
-		hexId.toStdString().c_str(),
-		authState.toStdString().c_str(),
+		hexId.c_str(),
+		authState.c_str(),
 		on_device_login_check,
 		ctx);
 
@@ -706,26 +705,6 @@ static void open_taffylabs_settings_dialog()
 	buttonLayout->addWidget(okButton);
 
 	rootLayout->addLayout(buttonLayout);
-
-	// Auth manager wiring
-	//auto &auth = lore_auth::AuthManager::instance();
-
-	//QObject::connect(&auth, &lore_auth::AuthManager::authenticationSucceeded,
-	//	nullptr,
-	//	](const QString &token) {
-	//		bearerTokenEdit->setText(token);
-	//		blog(LOG_INFO,
-	//		     "[TaffyLabs] bearer token updated from login");
-	//	});
-
-	//QObject::connect(&auth, &lore_auth::AuthManager::authenticationFailed,
-	//	nullptr,
-	//	[](const QString &reason) {
-	//		blog(LOG_WARNING,
-	//		     "[TaffyLabs] authentication failed: %s",
-	//		     reason.toUtf8().constData());
-	//	});
-	
 	
 	QObject::connect(loginButton, &QPushButton::clicked,
     	[loginButton, broadcastsDropdown, dlg]() {
@@ -742,8 +721,7 @@ static void open_taffylabs_settings_dialog()
 		ctx->owner = dlg;
         ctx->loginButton = loginButton;
         ctx->broadcastsDropdown = broadcastsDropdown;
-        ctx->hexId = QString::fromUtf8(hexID);
-
+        ctx->hexId = std::string(hexID);
         lore_api_result started = lore_deviceLogin(
             hexID,
             on_device_login,
