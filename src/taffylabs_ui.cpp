@@ -656,14 +656,6 @@ static void open_taffylabs_settings_dialog()
 	QHBoxLayout *addNewLayout = new QHBoxLayout();
 	addNewLayout->addStretch();
 
-	QCheckBox *enableAutoNewBroadcast =
-		new QCheckBox("Auto Generate New Broadcasts", dlg);
-	enableAutoNewBroadcast->setChecked(taffylabs_get_autoBroadcast());
-	rootLayout->addWidget(enableAutoNewBroadcast);
-
-	QPushButton *addNewMetadataButton =
-		new QPushButton("Add New Broadcast", dlg);
-	addNewLayout->addWidget(addNewMetadataButton);
 
 	rootLayout->addLayout(addNewLayout);
 
@@ -758,11 +750,7 @@ static void open_taffylabs_settings_dialog()
 			QJsonObject obj = arr.at(iSelected).toObject();
 			QJsonObject metadata = obj.value("metadata").toObject();
 
-			taffylabs_set_selected_broadcast_object(
-				QJsonDocument(obj).toJson(QJsonDocument::Compact).constData());
-			taffylabs_set_streamKey(
-				obj.value("stream_key").toString().toUtf8().constData());
-
+			taffylabs_set_selected_broadcast_object(QJsonDocument(obj).toJson(QJsonDocument::Compact).constData());
 			titleEdit->setText(metadata.value("title").toString());
 			descriptionEdit->setPlainText(
 				metadata.value("description").toString());
@@ -785,115 +773,15 @@ static void open_taffylabs_settings_dialog()
 			     "[TaffyLabs] Updating broadcast metadata: title='%s'",
 			     titleEdit->text().toUtf8().constData());
 		});
-
-	// Add new broadcast callback
-	QObject::connect(addNewMetadataButton, &QPushButton::clicked,
-			[titleEdit, descriptionEdit, broadcastsDropdown, loginButton, dlg]() {
-			blog(LOG_INFO, "[TaffyLabs] Add New clicked");
-
-		QJsonObject metadata;
-		metadata["title"] = titleEdit->text();
-		metadata["description"] = descriptionEdit->toPlainText();
-		//metadata["deviceInfo"] = taffylabs_get_unique_device_id_json();
-		const char *deviceJson = taffylabs_get_unique_device_id_json();
-
-		QJsonParseError err;
-		auto deviceDoc = QJsonDocument::fromJson(QByteArray(deviceJson), &err);
-
-		metadata["deviceInfo"] =
-			(err.error == QJsonParseError::NoError && deviceDoc.isObject())
-				? QJsonValue(deviceDoc.object())
-				: QJsonValue(QJsonValue::Null);
-
-		QJsonObject payload;
-		payload["metadata"] = metadata;
-
-		QJsonDocument doc(payload);
-		QByteArray jsonBytes = doc.toJson(QJsonDocument::Compact);
-
-		blog(LOG_INFO,
-		     "[TaffyLabs] Creating new broadcast: metadata='%s'",
-		     jsonBytes.constData());
-
-		CreateBroadcastContext *cbCtx = new CreateBroadcastContext();
-		cbCtx->broadcastsDropdown = broadcastsDropdown;
-		cbCtx->owner = dlg;
-
-		lore_api_result rNew = lore_broadcastsCreate(
-			taffylabs_get_bearer_token(),
-			jsonBytes.constData(),
-			[](const lore_api_result *result, void *user_data) {
-				CreateBroadcastContext *ctx =
-					static_cast<CreateBroadcastContext *>(user_data);
-
-				if (!result) {
-					taffylabs_show_error(
-						"Error",
-						"No response from server when creating broadcast");
-					delete ctx;
-					return;
-				}
-
-				if (!result->ok) {
-					blog(LOG_INFO,
-					     "[TaffyLabs] Failed to create broadcast: status=%ld error=%s",
-					     result->status_code,
-					     result->error_text ? result->error_text : "(none)");
-
-					taffylabs_show_error(
-						"Error",
-						QString("Failed to create broadcast: %1")
-							.arg(result->error_text ? result->error_text
-							                        : "Unknown error")
-							.toUtf8()
-							.constData());
-
-					delete ctx;
-					return;
-				}
-
-				blog(LOG_INFO,
-				     "[TaffyLabs] Broadcast created successfully: %s",
-				     result->body_text ? result->body_text : "(no body)");
-
-				taffylabs_set_selected_broadcast_object(result->body_text);
-				if (ctx->broadcastsDropdown && ctx->owner) {
-					QMetaObject::invokeMethod(
-						ctx->owner,
-						[combo = ctx->broadcastsDropdown,
-						 owner = ctx->owner]() {
-							if (combo && owner)
-								load_broadcasts_into_dropdown(combo, nullptr, owner);
-						},
-						Qt::QueuedConnection);
-				}
-
-				delete ctx;
-			},
-			cbCtx);
-
-		if (!rNew.ok) {
-			blog(LOG_WARNING,
-			     "[TaffyLabs] Failed to start create broadcast request: %s",
-			     rNew.error_text ? rNew.error_text : "(unknown)");
-			taffylabs_show_error(
-				"Error",
-				rNew.error_text ? rNew.error_text
-				                : "Failed to start create broadcast request");
-			delete cbCtx;
-		}
-	});
 	
 	// Save and close
 	QObject::connect(okButton, &QPushButton::clicked,
 		[dlg,
 		 enableLoreStreamCheck,
-		 enableAutoNewBroadcast,
 		 broadcastsDropdown,
 		 titleEdit,
 		 descriptionEdit]() {
 			taffylabs_set_enabled(enableLoreStreamCheck->isChecked());
-			taffylabs_set_autoBroadcast(enableAutoNewBroadcast->isChecked());
 
 			blog(LOG_INFO,
 			     "[TaffyLabs] Selected dropdown value: %s",

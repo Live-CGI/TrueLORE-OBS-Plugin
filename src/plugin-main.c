@@ -45,17 +45,7 @@ static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 		break;
 
 	case OBS_FRONTEND_EVENT_STREAMING_STARTED: {
-		blog(LOG_INFO, "[TaffyLabs] streaming started!");
-		const char *ss = taffylabs_get_streamServer();
-		const char *sk = taffylabs_get_streamKey();
-		if (!sk || sk[0] == '\0') {
-			taffylabs_show_warning("TaffyLabs Stream Key Missing",
-				"You have enabled TaffyLabs but have not set a stream key.\n" 
-				"Please enter a stream key in the TaffyLabs settings to use the streaming features.\n" 
-				"Your primary stream has still started, and the stream is treated as if Taffylabs is Disabled.");
-			return;
-		}
-		taffylabs_mirror_start(ss, sk);
+		taffylabs_mirror_start();
 		break;
 	}
 

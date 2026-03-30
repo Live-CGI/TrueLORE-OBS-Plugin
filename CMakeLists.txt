@@ -224,9 +224,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE CURL::libcurl)
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     src/plugin-main.c
-    src/taffylabs_settings.c
+    src/taffylabs_settings.cpp
     src/taffylabs_ui.cpp
-    src/taffylabs_mirror.c
+    src/taffylabs_mirror.cpp
     src/taffy_json_http.cpp
     src/lore-api.cpp
     src/lore-auth.cpp

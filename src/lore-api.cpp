@@ -2,6 +2,8 @@
 #include "taffy_json_http.h"
 #include "lore-deviceInfo.h"
 
+#include <obs-module.h>
+#include <obs-frontend-api.h>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -66,52 +68,41 @@ static void async_bridge(const taffy_json_http_response *resp, void *user_data)
 }
 } // namespace
 
-char *taffylabs_create_metadata_json(void)
+char *taffylabs_create_metadata_json(char* state)
 {
+	//build the base strings
+	std::string deviceJson = std::string(taffylabs_get_unique_device_id_json() ? taffylabs_get_unique_device_id_json() : "***ERROR GENERATING DEVICE ID***");
+	std::string title = std::string(obs_frontend_get_current_profile());
+	std::string description = "Stream started from OBS with TaffyLabs Lore integration:";
+	std::string stateStr = state ? std::string(state) : "ready";
+	
+	//build the timestamp
 	time_t now = time(NULL);
 	struct tm utc;
-
 #if defined(_WIN32)
 	gmtime_s(&utc, &now);
 #else
 	gmtime_r(&now, &utc);
 #endif
-
 	char date[11];    // YYYY-MM-DD
 	char timeStr[13]; // HH.mm.ss UTC
-
 	strftime(date, sizeof(date), "%Y-%m-%d", &utc);
 	strftime(timeStr, sizeof(timeStr), "%H.%M.%S UTC", &utc);
 
-	const char *deviceJson = taffylabs_get_unique_device_id_json();
-
-	if (!deviceJson)
-		deviceJson = "null";
-
-	char title[128];
-	char description[256];
-
-	snprintf(title, sizeof(title), "New Broadcast %s %s", date, timeStr);
-
-	snprintf(description, sizeof(description), "New Broadcast created at %s on %s", timeStr, date);
-
-	const char *format = "{"
-			     "\"metadata\":{"
-			     "\"title\":\"%s\","
-			     "\"description\":\"%s\","
-			     "\"deviceInfo\":%s"
-			     "}"
-			     "}";
-
-	size_t needed = snprintf(NULL, 0, format, title, description, deviceJson) + 1;
-
-	char *json = (char *)malloc(needed);
-	if (!json)
-		return NULL;
-
-	snprintf(json, needed, format, title, description, deviceJson);
-
-	return json;
+	//Append the timestamp to the description
+	title += " " + std::string(date) + " " + std::string(timeStr);
+	description += " " + std::string(date) + " " + std::string(timeStr);
+	nlohmann::json jsonObj = {
+		{"metadata", {
+			{"title", title},
+			{"description", description}
+		}},
+		{"state", stateStr},
+		{"device", json::parse(deviceJson)}
+	};
+	blog(LOG_INFO, "[TaffyLabs] Created metadata JSON: %s", jsonObj.dump().c_str());
+	char *out = dup_cstr(jsonObj.dump());
+	return out;
 }
 
 
@@ -526,7 +517,7 @@ extern "C" lore_api_result lore_broadcastsCreate(const char *bearer, const char 
 		//result.ok = 0;
 		//result.error_text = dup_cstr("Missing JSON payload");
 		//return result;
-		jsonData = taffylabs_create_metadata_json();
+		jsonData = taffylabs_create_metadata_json(nullptr);
 	}
 
 	const std::string authHeader = std::string("Authorization: Bearer ") + bearer;
