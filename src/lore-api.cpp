@@ -95,10 +95,10 @@ char *taffylabs_create_metadata_json(char* state)
 	nlohmann::json jsonObj = {
 		{"metadata", {
 			{"title", title},
-			{"description", description}
+			{"description", description},
+			{"device", json::parse(deviceJson)}
 		}},
-		{"state", stateStr},
-		{"device", json::parse(deviceJson)}
+		{"state", stateStr}
 	};
 	blog(LOG_INFO, "[TaffyLabs] Created metadata JSON: %s", jsonObj.dump().c_str());
 	char *out = dup_cstr(jsonObj.dump());

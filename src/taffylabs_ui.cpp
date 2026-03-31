@@ -161,6 +161,27 @@ static void taffylabs_update_status_indicator(const char *idText)
 	});
 }
 
+static void sortByUpdatedAt(QJsonArray& arr, const QString& sortBy)
+{
+    QVector<QJsonValue> vec;
+    vec.reserve(arr.size());
+
+    for (const auto& v : arr)
+        vec.push_back(v);
+
+    std::sort(vec.begin(), vec.end(),
+        [sortBy](const QJsonValue& a, const QJsonValue& b)
+        {
+            QString aTime = a.toObject().value(sortBy).toString();
+            QString bTime = b.toObject().value(sortBy).toString();
+
+            return aTime > bTime;
+        });
+
+    arr = QJsonArray();
+    for (const auto& v : vec)
+        arr.append(v);
+}
 
 static void populate_broadcast_dropdown_from_json(QComboBox *combo, const QByteArray &jsonBytes)
 {
@@ -200,7 +221,7 @@ static void populate_broadcast_dropdown_from_json(QComboBox *combo, const QByteA
 	if (parseError2.error == QJsonParseError::NoError) {
 		qoBroadcast = sbDoc.object();
 	}	
-
+	//sortByUpdatedAt(arr, "updatedAt");
 	for (const QJsonValue value : arr) {
 		if (!value.isObject())
 			continue;

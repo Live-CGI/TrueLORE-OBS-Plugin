@@ -116,22 +116,22 @@ bool taffylabs_mirror_start(void)
 	}
 	blog(LOG_INFO, "[TaffyLabs] mirror started successfully!");
 
-	//Set the State completed!
-	const char* BCAST_ID = taffylabs_get_streamID();
-	nlohmann::json jsonSetLive = {
-		{"state", "live"}
-	};
-	lore_api_result rUpdate = lore_broadcastsUpdate(
-		taffylabs_get_bearer_token(),
-		BCAST_ID,
-		jsonSetLive.dump().c_str(),
-		NULL);
+	//Set the State completed! ***NOT NECESSARY? HANDLED BY BACKEND?***
+	//const char* BCAST_ID = taffylabs_get_streamID();
+	//nlohmann::json jsonSetLive = {
+	//	{"state", "live"}
+	//};
+	//lore_api_result rUpdate = lore_broadcastsUpdate(
+	//	taffylabs_get_bearer_token(),
+	//	BCAST_ID,
+	//	jsonSetLive.dump().c_str(),
+	//	NULL);
 	
-	if(rUpdate.ok!=1){
-		blog(LOG_ERROR, "[TaffyLabs] failed to set broadcast state to live: %s", rUpdate.error_text ? rUpdate.error_text : "unknown error");
-	}else{
-		blog(LOG_INFO, "[TaffyLabs] broadcast state set to live successfully!");
-	}
+	//if(rUpdate.ok!=1){
+	//	blog(LOG_ERROR, "[TaffyLabs] failed to set broadcast state to live: %s", rUpdate.error_text ? rUpdate.error_text : "unknown error");
+	//}else{
+	//	blog(LOG_INFO, "[TaffyLabs] broadcast state set to live successfully!");
+	//}
 	return true;
 }
 
@@ -147,22 +147,22 @@ void taffylabs_mirror_stop(void)
 	blog(LOG_INFO, "[TaffyLabs] stopping mirror");
 	obs_output_stop(g_mirror_output);
 	mirror_release_all();
-	//Set the State completed!
-	const char* BCAST_ID = taffylabs_get_streamID();
-	nlohmann::json jsonSetLive = {
-		{"state", "completed"}
-	};
-	lore_api_result rUpdate = lore_broadcastsUpdate(
-		taffylabs_get_bearer_token(),
-		BCAST_ID,
-		jsonSetLive.dump().c_str(),
-		NULL);
+	//Set the State completed! ***NOT NECESSARY? HANDLED BY BACKEND?***
+	//const char* BCAST_ID = taffylabs_get_streamID();
+	//nlohmann::json jsonSetLive = {
+	//	{"state", "complete"}
+	//};
+	//lore_api_result rUpdate = lore_broadcastsUpdate(
+	//	taffylabs_get_bearer_token(),
+	//	BCAST_ID,
+	//	jsonSetLive.dump().c_str(),
+	//	NULL);
 	
-	if(rUpdate.ok!=1){
-		blog(LOG_ERROR, "[TaffyLabs] failed to set broadcast state to completed: %s", rUpdate.error_text ? rUpdate.error_text : "unknown error");
-	}else{
-		blog(LOG_INFO, "[TaffyLabs] broadcast state set to completed successfully!");	
-	}
+	//if(rUpdate.ok!=1){
+	//	blog(LOG_ERROR, "[TaffyLabs] failed to set broadcast state to completed: %s", rUpdate.error_text ? rUpdate.error_text : "unknown error");
+	//}else{
+    //	blog(LOG_INFO, "[TaffyLabs] broadcast state set to completed successfully!");	
+	//}
 }
 
 } // extern "C"
