@@ -280,3 +280,4 @@ void taffylabs_clear_settings(void)
 }
 
 } // extern "C"
+
