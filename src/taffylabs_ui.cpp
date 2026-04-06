@@ -166,9 +166,10 @@ static void sortByUpdatedAt(QJsonArray& arr, const QString& sortBy)
     QVector<QJsonValue> vec;
     vec.reserve(arr.size());
 
-    for (const auto& v : arr)
-        vec.push_back(v);
 
+    for (QJsonValue v : arr)
+        vec.push_back(v);
+    
     std::sort(vec.begin(), vec.end(),
         [sortBy](const QJsonValue& a, const QJsonValue& b)
         {
