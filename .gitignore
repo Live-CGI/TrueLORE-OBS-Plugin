@@ -21,6 +21,7 @@
 !*.cmd
 !*.ps1
 !*.sh
+!*.zsh
 # Exclude lock files
 *.lock.json
 
