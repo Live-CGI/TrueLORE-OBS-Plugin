@@ -232,6 +232,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     src/lore-auth.cpp
     src/lore-deviceInfo.cpp
     src/crypto_string.cpp
+    src/obs_stream_keyframe_enforcer.cpp
 )
 
 # ------------------------------------------------------------------------------

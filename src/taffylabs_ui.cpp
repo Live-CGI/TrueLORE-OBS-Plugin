@@ -657,6 +657,21 @@ static void open_taffylabs_settings_dialog()
 	enableLoreStreamCheck->setChecked(taffylabs_get_enabled());
 	rootLayout->addWidget(enableLoreStreamCheck);
 
+	// Enforce 2K FPS limit
+	QCheckBox *enforce2kCheck = new QCheckBox("Enforce 2 Keyframe Per Second Limit", dlg);
+	enforce2kCheck->setChecked(taffylabs_get_enforce_2k_fps());
+	rootLayout->addWidget(enforce2kCheck);
+
+	QLabel *enforceWarningLabel = new QLabel("Please note, it is STRONGLY recommended to enable a 2 Keyframe Per Second minimum.  Most streaming targets already enforce this, but any that do not WILL BE MODIFIED when Lore is enabled.", dlg);
+	enforceWarningLabel->setStyleSheet("QLabel { color : red; font-weight: bold; }");
+	enforceWarningLabel->setWordWrap(true);
+	enforceWarningLabel->setVisible(!taffylabs_get_enforce_2k_fps());
+	rootLayout->addWidget(enforceWarningLabel);
+
+	QObject::connect(enforce2kCheck, &QCheckBox::toggled, [enforceWarningLabel](bool checked) {
+		enforceWarningLabel->setVisible(!checked);
+	});
+
 	// Login button
 	QPushButton *loginButton = new QPushButton("Please Wait...", dlg);
 	rootLayout->addWidget(loginButton);
@@ -799,10 +814,12 @@ static void open_taffylabs_settings_dialog()
 	QObject::connect(okButton, &QPushButton::clicked,
 		[dlg,
 		 enableLoreStreamCheck,
+		 enforce2kCheck,
 		 broadcastsDropdown,
 		 titleEdit,
 		 descriptionEdit]() {
 			taffylabs_set_enabled(enableLoreStreamCheck->isChecked());
+			taffylabs_set_enforce_2k_fps(enforce2kCheck->isChecked());
 
 			blog(LOG_INFO,
 			     "[TaffyLabs] Selected dropdown value: %s",

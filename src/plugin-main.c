@@ -21,12 +21,14 @@ with this program. If not, see <https://www.gnu.org/licenses/>
 #include <obs-frontend-api.h>
 #include <string.h>
 
+#include "obs_stream_keyframe_enforcer.h"
 #include "taffylabs_ui.h"
 #include "taffylabs_settings.h"
 #include "taffylabs_mirror.h"
 #include "taffy_json_http.h"
 #include "lore-api.h"
 #include "lore-deviceInfo.h"
+
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
@@ -42,6 +44,10 @@ static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 	switch (event) {
 	case OBS_FRONTEND_EVENT_STREAMING_STARTING:
 		blog(LOG_INFO, "[TaffyLabs] streaming starting...");
+		if(taffylabs_get_enforce_2k_fps()){
+			blog(LOG_INFO, "[TaffyLabs] Enforcing 2 Keyframes per second minimum...");
+			taffylabs_enforce_stream_keyframe_interval();
+		}
 		break;
 
 	case OBS_FRONTEND_EVENT_STREAMING_STARTED: {

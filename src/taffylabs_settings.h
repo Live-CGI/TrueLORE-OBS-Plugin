@@ -12,6 +12,9 @@ void taffylabs_set_enabled(bool enabled);
 bool taffylabs_get_optional_metadata_enabled(void);
 void taffylabs_set_optional_metadata_enabled(bool enabled);
 
+bool taffylabs_get_enforce_2k_fps(void);
+void taffylabs_set_enforce_2k_fps(bool enforce);
+
 const char *taffylabs_get_title(void);
 void taffylabs_set_title(const char *title);
 

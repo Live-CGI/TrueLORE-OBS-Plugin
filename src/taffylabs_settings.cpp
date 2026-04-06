@@ -16,6 +16,7 @@
 #define KEY_ENABLED                    "enabled"
 #define KEY_AUTO_BROADCAST             "auto_broadcast"
 #define KEY_OPTIONAL_METADATA_ENABLED  "optional_metadata_enabled"
+#define KEY_ENFORCE_2K_FPS             "enforce_2k_fps"
 #define KEY_TITLE                      "title"
 #define KEY_DESCRIPTION                "description"
 #define KEY_BEARER_TOKEN               "bearerToken"
@@ -31,6 +32,7 @@ namespace
 	static bool g_enabled = true;
 	static bool g_optional_metadata_enabled = false;
 	static bool g_autoBroadcast = true;
+	static bool g_enforce2KFPS = false;
 
 	static char g_title[TAFFY_TEXT_MAX] = "";
 	static char g_description[TAFFY_TEXT_MAX] = "";
@@ -83,6 +85,16 @@ bool taffylabs_get_optional_metadata_enabled(void)
 void taffylabs_set_optional_metadata_enabled(bool enabled)
 {
 	g_optional_metadata_enabled = enabled;
+}
+
+bool taffylabs_get_enforce_2k_fps(void)
+{
+	return g_enforce2KFPS;
+}
+
+void taffylabs_set_enforce_2k_fps(bool enforce)
+{
+	g_enforce2KFPS = enforce;
 }
 
 const char *taffylabs_get_title(void)
@@ -194,6 +206,7 @@ void taffylabs_save_settings(void)
 
 	config_set_bool(cfg, TAFFY_SECTION, KEY_ENABLED, g_enabled);
 	config_set_bool(cfg, TAFFY_SECTION, KEY_OPTIONAL_METADATA_ENABLED, g_optional_metadata_enabled);
+	config_set_bool(cfg, TAFFY_SECTION, KEY_ENFORCE_2K_FPS, g_enforce2KFPS);
 	config_set_string(cfg, TAFFY_SECTION, KEY_TITLE, g_title);
 	config_set_string(cfg, TAFFY_SECTION, KEY_DESCRIPTION, g_description);
 	config_set_string(cfg, TAFFY_SECTION, KEY_BROADCAST, g_selectedBroadcastObject);
@@ -211,6 +224,7 @@ void taffylabs_load_settings(void)
 	g_enabled = true;
 	g_optional_metadata_enabled = false;
 	g_autoBroadcast = true;
+	g_enforce2KFPS = false;
 
 	copy_text(g_title, sizeof(g_title), "");
 	copy_text(g_description, sizeof(g_description), "");
@@ -226,6 +240,7 @@ void taffylabs_load_settings(void)
 
 	g_enabled = config_get_bool(cfg, TAFFY_SECTION, KEY_ENABLED);
 	g_optional_metadata_enabled = config_get_bool(cfg, TAFFY_SECTION, KEY_OPTIONAL_METADATA_ENABLED);
+	g_enforce2KFPS = config_get_bool(cfg, TAFFY_SECTION, KEY_ENFORCE_2K_FPS);
 
 	copy_text(g_title, sizeof(g_title),
 		config_get_string(cfg, TAFFY_SECTION, KEY_TITLE));
@@ -250,6 +265,7 @@ void taffylabs_clear_settings(void)
 	g_enabled = false;
 	g_optional_metadata_enabled = false;
 	g_autoBroadcast = true;
+	g_enforce2KFPS = false;
 
 	copy_text(g_title, sizeof(g_title), "");
 	copy_text(g_description, sizeof(g_description), "");
