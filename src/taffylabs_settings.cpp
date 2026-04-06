@@ -28,7 +28,7 @@
 namespace
 {
 	static const char *DEFAULT_SERVER = "rtmps://dev-rtmp.tome-lore.com:443/live";
-	
+
 	static bool g_enabled = true;
 	static bool g_optional_metadata_enabled = false;
 	static bool g_autoBroadcast = true;
@@ -39,11 +39,11 @@ namespace
 	static char g_bearer_token[TAFFY_TEXT_MAX] = "";
 	static char g_streamKey[TAFFY_TEXT_MAX] = "";
 	static char g_streamServer[TAFFY_TEXT_MAX] = "";
+	static char g_streamID[TAFFY_TEXT_MAX] = "";
 	static char g_selectedBroadcastObject[TAFFY_TEXT_MAX] = "";
 	static char g_BroadcastArray[TAFFY_BROADCAST_ARRAY_MAX] = "";
 	static char g_UniqueID[TAFFY_TEXT_MAX] = "";
-	
-	
+
 	static void copy_text(char *dst, size_t dst_size, const char *src)
 	{
 		if (!dst || dst_size == 0)
@@ -55,13 +55,21 @@ namespace
 		std::snprintf(dst, dst_size, "%s", src);
 	}
 
-	// Optional helper if later you want to validate JSON input before storing.
 	static bool is_valid_json(const char *text)
 	{
 		if (!text || !*text)
 			return false;
 
 		return nlohmann::json::accept(text);
+	}
+
+	static bool get_selected_broadcast_json(nlohmann::json &jsonObj)
+	{
+		if (!g_selectedBroadcastObject[0])
+			return false;
+
+		jsonObj = nlohmann::json::parse(g_selectedBroadcastObject, nullptr, false);
+		return !jsonObj.is_discarded();
 	}
 }
 
@@ -119,23 +127,44 @@ void taffylabs_set_description(const char *description)
 
 const char *taffylabs_get_streamServer(void)
 {
-		nlohmann::json jsonObj = nlohmann::json::parse(g_selectedBroadcastObject, nullptr, false);
-		std::string streamServerFromJson = jsonObj.value("stream_server", DEFAULT_SERVER);
-		return streamServerFromJson.c_str();
+	nlohmann::json jsonObj;
+	if (get_selected_broadcast_json(jsonObj)) {
+		std::string streamServerFromJson =
+			jsonObj.value("stream_server", std::string(DEFAULT_SERVER));
+		copy_text(g_streamServer, sizeof(g_streamServer), streamServerFromJson.c_str());
+	} else {
+		copy_text(g_streamServer, sizeof(g_streamServer), DEFAULT_SERVER);
+	}
+
+	return g_streamServer;
 }
 
 const char *taffylabs_get_streamKey(void)
 {
-		nlohmann::json jsonObj = nlohmann::json::parse(g_selectedBroadcastObject, nullptr, false);
-		std::string streamKeyFromJson = jsonObj.value("stream_key", "");
-		return streamKeyFromJson.c_str();
+	nlohmann::json jsonObj;
+	if (get_selected_broadcast_json(jsonObj)) {
+		std::string streamKeyFromJson =
+			jsonObj.value("stream_key", std::string(""));
+		copy_text(g_streamKey, sizeof(g_streamKey), streamKeyFromJson.c_str());
+	} else {
+		copy_text(g_streamKey, sizeof(g_streamKey), "");
+	}
+
+	return g_streamKey;
 }
 
 const char *taffylabs_get_streamID(void)
 {
-		nlohmann::json jsonObj = nlohmann::json::parse(g_selectedBroadcastObject, nullptr, false);
-		std::string streamID = jsonObj.value("id", "");
-		return streamID.c_str();
+	nlohmann::json jsonObj;
+	if (get_selected_broadcast_json(jsonObj)) {
+		std::string streamIDFromJson =
+			jsonObj.value("id", std::string(""));
+		copy_text(g_streamID, sizeof(g_streamID), streamIDFromJson.c_str());
+	} else {
+		copy_text(g_streamID, sizeof(g_streamID), "");
+	}
+
+	return g_streamID;
 }
 
 const char *taffylabs_get_bearer_token(void)
@@ -157,11 +186,14 @@ const char *taffylabs_get_selected_broadcast_object(void)
 
 void taffylabs_set_selected_broadcast_object(const char *broadcastObject)
 {
-	if(nlohmann::json::accept(broadcastObject)){
-		copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject), broadcastObject);	
-		blog(LOG_INFO, "[TaffyLabs] Selected broadcast object set successfully. ID=%s", taffylabs_get_streamID());
-	}else{
-		blog(LOG_ERROR, "[TaffyLabs] Invalid JSON for selected broadcast object, ignoring.\n Data: %s", broadcastObject ? broadcastObject : "(null)");
+	if (is_valid_json(broadcastObject)) {
+		copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject), broadcastObject);
+		blog(LOG_INFO, "[TaffyLabs] Selected broadcast object set successfully. ID=%s",
+		     taffylabs_get_streamID());
+	} else {
+		blog(LOG_ERROR,
+		     "[TaffyLabs] Invalid JSON for selected broadcast object, ignoring.\n Data: %s",
+		     broadcastObject ? broadcastObject : "(null)");
 	}
 }
 
@@ -172,12 +204,6 @@ const char *taffylabs_get_broadcast_array(void)
 
 void taffylabs_set_broadcast_array(const char *broadcastArray)
 {
-	// If you want JSON-only storage, uncomment this:
-	// if (broadcastArray && *broadcastArray && !is_valid_json(broadcastArray)) {
-	//     blog(LOG_WARNING, "[TaffyLabs] Invalid broadcast array JSON ignored.");
-	//     return;
-	// }
-
 	copy_text(g_BroadcastArray, sizeof(g_BroadcastArray), broadcastArray);
 }
 
@@ -229,11 +255,12 @@ void taffylabs_load_settings(void)
 	copy_text(g_title, sizeof(g_title), "");
 	copy_text(g_description, sizeof(g_description), "");
 	copy_text(g_streamKey, sizeof(g_streamKey), "");
+	copy_text(g_streamServer, sizeof(g_streamServer), "");
+	copy_text(g_streamID, sizeof(g_streamID), "");
 	copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject), "");
 	copy_text(g_BroadcastArray, sizeof(g_BroadcastArray), "");
 	copy_text(g_bearer_token, sizeof(g_bearer_token), "");
 	copy_text(g_UniqueID, sizeof(g_UniqueID), "");
-	copy_text(g_streamServer, sizeof(g_streamServer), "");
 
 	if (!cfg)
 		return;
@@ -270,14 +297,14 @@ void taffylabs_clear_settings(void)
 	copy_text(g_title, sizeof(g_title), "");
 	copy_text(g_description, sizeof(g_description), "");
 	copy_text(g_streamKey, sizeof(g_streamKey), "");
+	copy_text(g_streamServer, sizeof(g_streamServer), "");
+	copy_text(g_streamID, sizeof(g_streamID), "");
 	copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject), "");
 	copy_text(g_BroadcastArray, sizeof(g_BroadcastArray), "");
 	copy_text(g_bearer_token, sizeof(g_bearer_token), "");
 	copy_text(g_UniqueID, sizeof(g_UniqueID), "");
-	copy_text(g_streamServer, sizeof(g_streamServer), "");
 
 	taffylabs_save_settings();
 }
 
 } // extern "C"
-
