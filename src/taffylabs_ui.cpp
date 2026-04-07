@@ -908,31 +908,31 @@ extern "C" void taffylabs_ui_init()
 		taffylabs_update_status_indicator("Please Authenticate Taffylabs Lore!");
 	}
 
-	if(false){
-		const char *selBroadCast = taffylabs_get_selected_broadcast_object();
-		if (!selBroadCast || !*selBroadCast) {
-			taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
-		} else {
-			QJsonParseError parseError;
-			QJsonDocument sbDoc =
-				QJsonDocument::fromJson(QByteArray(selBroadCast), &parseError);
+	//if(false){
+	//	const char *selBroadCast = taffylabs_get_selected_broadcast_object();
+	//	if (!selBroadCast || !*selBroadCast) {
+	//		taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
+	//	} else {
+	//		QJsonParseError parseError;
+	//		QJsonDocument sbDoc =
+	//			QJsonDocument::fromJson(QByteArray(selBroadCast), &parseError);
+	//		
+	//		if (parseError.error != QJsonParseError::NoError || !sbDoc.isObject()) {
+	//			taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
+	//		} else {
+	//			QJsonObject rootObj = sbDoc.object();
+	//			QJsonObject metadataObj = rootObj.value("metadata").toObject();
+	//			QString title = QStringLiteral("TaffyLabs Broadcast: ") + metadataObj.value("title").toString();
 
-			if (parseError.error != QJsonParseError::NoError || !sbDoc.isObject()) {
-				taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
-			} else {
-				QJsonObject rootObj = sbDoc.object();
-				QJsonObject metadataObj = rootObj.value("metadata").toObject();
-				QString title = QStringLiteral("TaffyLabs Broadcast: ") + metadataObj.value("title").toString();
-
-				if (title.isEmpty()) {
-					taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
-				} else {
-					QByteArray titleUtf8 = title.toUtf8();
-					taffylabs_update_status_indicator(titleUtf8.constData());
-				}
-			}
-		}
-	}
+	//			if (title.isEmpty()) {
+	//				taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
+	//			} else {
+	//				QByteArray titleUtf8 = title.toUtf8();
+	//				taffylabs_update_status_indicator(titleUtf8.constData());
+	//			}
+	//		}
+	//	}
+	//}
 	
 
 	g_actionSettings = static_cast<QAction *>(
