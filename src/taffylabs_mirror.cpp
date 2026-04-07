@@ -7,6 +7,7 @@
 
 #include "taffylabs_settings.h"
 #include "lore-api.h"
+#include "taffylabs_ui.h"
 
 static obs_output_t  *g_mirror_output  = NULL;
 static obs_service_t *g_mirror_service = NULL;
@@ -58,19 +59,20 @@ bool taffylabs_mirror_start(void)
 		taffylabs_get_bearer_token(), NULL, NULL, NULL);
 
 	if (!rNew.ok) {
-		blog(LOG_WARNING, "[TaffyLabs] failed to create new broadcast: %s",
-		     rNew.error_text ? rNew.error_text : "unknown error");
+		blog(LOG_WARNING, "[TaffyLabs] failed to create new broadcast: %s", rNew.error_text ? rNew.error_text : "unknown error");
+		taffylabs_update_status_indicator("Failed to create new broadcast!");
+		taffylabs_show_error("Failed to create new broadcast!", rNew.error_text ? rNew.error_text : "unknown error");	
 		return false;
 	} else {
 		blog(LOG_INFO, "[TaffyLabs] created new broadcast successfully!");
 	}
 
 	taffylabs_set_selected_broadcast_object(rNew.body_text);
-
-
 	obs_output_t *primary = obs_frontend_get_streaming_output();
 	if (!primary) {
 		blog(LOG_WARNING, "[TaffyLabs] no primary streaming output available");
+		taffylabs_update_status_indicator("No primary streaming output available!");
+		taffylabs_show_error("No primary streaming output available!", "Please start streaming in OBS first.");
 		return false;
 	}
 
@@ -80,6 +82,8 @@ bool taffylabs_mirror_start(void)
 	mirror_build_service(STREAM_SERVER, STREAM_KEY);
 	if (!g_mirror_service) {
 		blog(LOG_ERROR, "[TaffyLabs] failed to create mirror RTMP service");
+		taffylabs_update_status_indicator("Failed to create mirror RTMP service!");
+		taffylabs_show_error("Failed to create mirror RTMP service!", "Please check your stream server and stream key.");
 		return false;
 	}else{
 		blog(LOG_INFO, "[TaffyLabs] mirror RTMP service created successfully\n" 
@@ -91,6 +95,8 @@ bool taffylabs_mirror_start(void)
 	g_mirror_output = obs_output_create("rtmp_output", "taffylabs_mirror_output", NULL, NULL);
 	if (!g_mirror_output) {
 		blog(LOG_ERROR, "[TaffyLabs] failed to create mirror RTMP output");
+		taffylabs_update_status_indicator("Failed to create mirror RTMP output!");
+		taffylabs_show_error("Failed to create mirror RTMP output!", "Please check your stream server and stream key.");
 		mirror_release_all();
 		return false;
 	}
@@ -102,7 +108,9 @@ bool taffylabs_mirror_start(void)
 
 	if (!venc || !aenc) {
 		blog(LOG_ERROR, "[TaffyLabs] failed to get encoders from primary output");
+		taffylabs_update_status_indicator("Failed to get encoders from primary output!");
 		mirror_release_all();
+		taffylabs_show_error("Failed to get encoders from primary output!", "Please check your stream server and stream key.");
 		return false;
 	}
 
@@ -111,27 +119,15 @@ bool taffylabs_mirror_start(void)
 
 	if (!obs_output_start(g_mirror_output)) {
 		blog(LOG_ERROR, "[TaffyLabs] mirror obs_output_start failed");
+		taffylabs_update_status_indicator("Failed to start mirror!");
 		mirror_release_all();
+		taffylabs_show_error("Failed to start mirror!", "Please check your stream server and stream key.");
 		return false;
 	}
 	blog(LOG_INFO, "[TaffyLabs] mirror started successfully!");
 
-	//Set the State completed! ***NOT NECESSARY? HANDLED BY BACKEND?***
-	//const char* BCAST_ID = taffylabs_get_streamID();
-	//nlohmann::json jsonSetLive = {
-	//	{"state", "live"}
-	//};
-	//lore_api_result rUpdate = lore_broadcastsUpdate(
-	//	taffylabs_get_bearer_token(),
-	//	BCAST_ID,
-	//	jsonSetLive.dump().c_str(),
-	//	NULL);
-	
-	//if(rUpdate.ok!=1){
-	//	blog(LOG_ERROR, "[TaffyLabs] failed to set broadcast state to live: %s", rUpdate.error_text ? rUpdate.error_text : "unknown error");
-	//}else{
-	//	blog(LOG_INFO, "[TaffyLabs] broadcast state set to live successfully!");
-	//}
+	std::string msg = "Streaming to: " + std::string(taffylabs_get_title());
+	taffylabs_update_status_indicator(msg.c_str());
 	return true;
 }
 
@@ -141,28 +137,14 @@ void taffylabs_mirror_stop(void)
 
 	if (!g_mirror_output) {
 		blog(LOG_WARNING, "[TaffyLabs] mirror not running, take a nap instead.");
+		taffylabs_update_status_indicator("Mirror not running!");
 		return;
 	}
 
 	blog(LOG_INFO, "[TaffyLabs] stopping mirror");
 	obs_output_stop(g_mirror_output);
 	mirror_release_all();
-	//Set the State completed! ***NOT NECESSARY? HANDLED BY BACKEND?***
-	//const char* BCAST_ID = taffylabs_get_streamID();
-	//nlohmann::json jsonSetLive = {
-	//	{"state", "complete"}
-	//};
-	//lore_api_result rUpdate = lore_broadcastsUpdate(
-	//	taffylabs_get_bearer_token(),
-	//	BCAST_ID,
-	//	jsonSetLive.dump().c_str(),
-	//	NULL);
-	
-	//if(rUpdate.ok!=1){
-	//	blog(LOG_ERROR, "[TaffyLabs] failed to set broadcast state to completed: %s", rUpdate.error_text ? rUpdate.error_text : "unknown error");
-	//}else{
-    //	blog(LOG_INFO, "[TaffyLabs] broadcast state set to completed successfully!");	
-	//}
+	taffylabs_update_status_indicator("Mirror stopped successfully!");
 }
 
 } // extern "C"

@@ -25,8 +25,13 @@ const char *taffylabs_get_bearer_token(void);
 void taffylabs_set_bearer_token(const char *token);
 
 const char *taffylabs_get_streamServer(void);
+void taffylabs_set_streamServer(const char *streamServer);
+
 const char *taffylabs_get_streamKey(void);
+void taffylabs_set_streamKey(const char *streamKey);
+
 const char *taffylabs_get_streamID(void);
+void taffylabs_set_streamID(const char *streamID);
 
 const char *taffylabs_get_selected_broadcast_object(void);
 void taffylabs_set_selected_broadcast_object(const char *broadcastObject);

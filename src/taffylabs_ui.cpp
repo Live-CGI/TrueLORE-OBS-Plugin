@@ -143,7 +143,7 @@ void open_browser(const std::string& url)
 #endif
 }
 
-static void taffylabs_update_status_indicator(const char *idText)
+extern "C" void taffylabs_update_status_indicator(const char *idText)
 {
 	void *main_window_ptr = obs_frontend_get_main_window();
 	if (!main_window_ptr)
@@ -795,20 +795,33 @@ static void open_taffylabs_settings_dialog()
 
 	// Update metadata callback
 	QObject::connect(updateMetadataButton, &QPushButton::clicked,
-		[titleEdit, descriptionEdit, broadcastsDropdown]() {
+		[titleEdit, descriptionEdit, broadcastsDropdown, loginButton, dlg]() {
 			int iSelected = broadcastsDropdown->currentIndex();
 			blog(LOG_INFO,
 			     "[TaffyLabs] Update metadata clicked for index %d",
 			     iSelected);
 
-			taffylabs_set_title(titleEdit->text().toUtf8().constData());
-			taffylabs_set_description(
+				taffylabs_set_title(titleEdit->text().toUtf8().constData());
+				taffylabs_set_description(
 				descriptionEdit->toPlainText().toUtf8().constData());
-
+			
+			QJsonObject obj = QJsonDocument::fromJson(QByteArray(taffylabs_get_selected_broadcast_object())).object();
+			QJsonObject metadataObj = obj.value("metadata").toObject();			
+			QJsonObject updateObj;
+			updateObj.insert("metadata", metadataObj);
+			
+			QByteArray jsonBytes = QJsonDocument(updateObj).toJson(QJsonDocument::Compact);
+			lore_api_result result = lore_broadcastsUpdate(taffylabs_get_bearer_token(), taffylabs_get_streamID(), jsonBytes.constData(), nullptr);
+			
+			if (!result.ok) {
+				taffylabs_show_error("Error", "Could not update broadcast metadata");
+				blog(LOG_WARNING, "[TaffyLabs] Could not update broadcast metadata: %s", result.error_text ? result.error_text : "no response");
+			}
 			// Put your API/update logic here
 			blog(LOG_INFO,
-			     "[TaffyLabs] Updating broadcast metadata: title='%s'",
+			     "[TaffyLabs] Updated broadcast metadata: title='%s'",
 			     titleEdit->text().toUtf8().constData());
+			load_broadcasts_into_dropdown(broadcastsDropdown, loginButton, dlg);	
 		});
 	
 	// Save and close
@@ -885,38 +898,42 @@ static void taffylabs_remove_status_indicator()
 extern "C" void taffylabs_ui_init()
 {
 	taffylabs_add_status_indicator();
-	taffylabs_update_status_indicator("TaffyLabs Lore Initializing!");
+	taffylabs_update_status_indicator("Taffylabs Lore Initializing!");
 	taffylabs_load_settings();
 	if(lore_authConfirm(taffylabs_get_bearer_token())){
 		blog(LOG_INFO, "[TaffyLabs] Authentication confirmed successfully on UI init.");		
+		taffylabs_update_status_indicator("Taffylabs Lore Authenticated Successfully!");
 	}else{
 		taffylabs_clear_settings();
 		taffylabs_update_status_indicator("Please Authenticate Taffylabs Lore!");
 	}
 
-	const char *selBroadCast = taffylabs_get_selected_broadcast_object();
-	if (!selBroadCast || !*selBroadCast) {
-		taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
-	} else {
-		QJsonParseError parseError;
-		QJsonDocument sbDoc =
-			QJsonDocument::fromJson(QByteArray(selBroadCast), &parseError);
-
-		if (parseError.error != QJsonParseError::NoError || !sbDoc.isObject()) {
+	if(false){
+		const char *selBroadCast = taffylabs_get_selected_broadcast_object();
+		if (!selBroadCast || !*selBroadCast) {
 			taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
 		} else {
-			QJsonObject rootObj = sbDoc.object();
-			QJsonObject metadataObj = rootObj.value("metadata").toObject();
-			QString title = QStringLiteral("TaffyLabs Broadcast: ") + metadataObj.value("title").toString();
+			QJsonParseError parseError;
+			QJsonDocument sbDoc =
+				QJsonDocument::fromJson(QByteArray(selBroadCast), &parseError);
 
-			if (title.isEmpty()) {
+			if (parseError.error != QJsonParseError::NoError || !sbDoc.isObject()) {
 				taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
 			} else {
-				QByteArray titleUtf8 = title.toUtf8();
-				taffylabs_update_status_indicator(titleUtf8.constData());
+				QJsonObject rootObj = sbDoc.object();
+				QJsonObject metadataObj = rootObj.value("metadata").toObject();
+				QString title = QStringLiteral("TaffyLabs Broadcast: ") + metadataObj.value("title").toString();
+
+				if (title.isEmpty()) {
+					taffylabs_update_status_indicator("Please check your TaffyLabs Settings!");
+				} else {
+					QByteArray titleUtf8 = title.toUtf8();
+					taffylabs_update_status_indicator(titleUtf8.constData());
+				}
 			}
 		}
 	}
+	
 
 	g_actionSettings = static_cast<QAction *>(
 		obs_frontend_add_tools_menu_qaction((std::string("TaffyLabs Lore Settings")).c_str()));

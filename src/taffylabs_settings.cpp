@@ -69,7 +69,20 @@ namespace
 			return false;
 
 		jsonObj = nlohmann::json::parse(g_selectedBroadcastObject, nullptr, false);
-		return !jsonObj.is_discarded();
+		if (jsonObj.is_discarded())
+			return false;
+
+		if (jsonObj.is_array() && !jsonObj.empty()) {
+			jsonObj = jsonObj[0];
+		}
+
+		return jsonObj.is_object();
+	}
+
+	static void save_selected_broadcast_json(const nlohmann::json &jsonObj)
+	{
+		std::string s = jsonObj.dump();
+		copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject), s.c_str());
 	}
 }
 
@@ -107,22 +120,44 @@ void taffylabs_set_enforce_2k_fps(bool enforce)
 
 const char *taffylabs_get_title(void)
 {
+	nlohmann::json jsonObj;
+	if (get_selected_broadcast_json(jsonObj)) {
+		std::string title = jsonObj["metadata"].value("title", "");
+		copy_text(g_title, sizeof(g_title), title.c_str());
+	}
 	return g_title;
 }
 
 void taffylabs_set_title(const char *title)
 {
 	copy_text(g_title, sizeof(g_title), title);
+	nlohmann::json jsonObj;
+	if (!get_selected_broadcast_json(jsonObj)) {
+		jsonObj = nlohmann::json::object();
+	}
+	jsonObj["metadata"]["title"] = title;
+	save_selected_broadcast_json(jsonObj);
 }
 
 const char *taffylabs_get_description(void)
 {
+	nlohmann::json jsonObj;
+	if (get_selected_broadcast_json(jsonObj)) {
+		std::string desc = jsonObj["metadata"].value("description", "");
+		copy_text(g_description, sizeof(g_description), desc.c_str());
+	}
 	return g_description;
 }
 
 void taffylabs_set_description(const char *description)
 {
 	copy_text(g_description, sizeof(g_description), description);
+	nlohmann::json jsonObj;
+	if (!get_selected_broadcast_json(jsonObj)) {
+		jsonObj = nlohmann::json::object();
+	}
+	jsonObj["metadata"]["description"] = description;
+	save_selected_broadcast_json(jsonObj);
 }
 
 const char *taffylabs_get_streamServer(void)
@@ -139,6 +174,17 @@ const char *taffylabs_get_streamServer(void)
 	return g_streamServer;
 }
 
+void taffylabs_set_streamServer(const char *streamServer)
+{
+	copy_text(g_streamServer, sizeof(g_streamServer), streamServer);
+	nlohmann::json jsonObj;
+	if (!get_selected_broadcast_json(jsonObj)) {
+		jsonObj = nlohmann::json::object();
+	}
+	jsonObj["stream_server"] = streamServer;
+	save_selected_broadcast_json(jsonObj);
+}
+
 const char *taffylabs_get_streamKey(void)
 {
 	nlohmann::json jsonObj;
@@ -153,6 +199,17 @@ const char *taffylabs_get_streamKey(void)
 	return g_streamKey;
 }
 
+void taffylabs_set_streamKey(const char *streamKey)
+{
+	copy_text(g_streamKey, sizeof(g_streamKey), streamKey);
+	nlohmann::json jsonObj;
+	if (!get_selected_broadcast_json(jsonObj)) {
+		jsonObj = nlohmann::json::object();
+	}
+	jsonObj["stream_key"] = streamKey;
+	save_selected_broadcast_json(jsonObj);
+}
+
 const char *taffylabs_get_streamID(void)
 {
 	nlohmann::json jsonObj;
@@ -165,6 +222,17 @@ const char *taffylabs_get_streamID(void)
 	}
 
 	return g_streamID;
+}
+
+void taffylabs_set_streamID(const char *streamID)
+{
+	copy_text(g_streamID, sizeof(g_streamID), streamID);
+	nlohmann::json jsonObj;
+	if (!get_selected_broadcast_json(jsonObj)) {
+		jsonObj = nlohmann::json::object();
+	}
+	jsonObj["id"] = streamID;
+	save_selected_broadcast_json(jsonObj);
 }
 
 const char *taffylabs_get_bearer_token(void)
@@ -217,10 +285,7 @@ void taffylabs_set_unique_id(const char *uniqueID)
 	copy_text(g_UniqueID, sizeof(g_UniqueID), uniqueID);
 }
 
-void taffylabs_set_streamServer(const char *streamServer)
-{
-	copy_text(g_streamServer, sizeof(g_streamServer), streamServer);
-}
+// Redundant now as taffylabs_set_streamServer handles JSON update
 
 void taffylabs_save_settings(void)
 {

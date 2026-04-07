@@ -640,6 +640,8 @@ extern "C" lore_api_result lore_broadcastsUpdate(const char *bearer, const char 
 		return result;
 	}
 
+	blog(LOG_INFO, "[TaffyLabs] Updating broadcast metadata: %s", jsonData);
+	
 	const char *entryPoint = sEntryPoint.c_str();
 	if (!callback) {
 
