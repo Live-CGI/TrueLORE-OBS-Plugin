@@ -127,7 +127,9 @@ function Package {
             # Copy installer to release directory so uploading artifacts will catch it
             $SetupFiles = Get-ChildItem -Path "${ProjectRoot}/InnoSetup/Output" -Filter "*_Setup_*.exe"
             foreach ($SetupFile in $SetupFiles) {
-                Copy-Item -Force $SetupFile.FullName "${ProjectRoot}/release/"
+                # Rename to match the artifact glob: pluginName-version-windows-x64*.*
+                $FinalInstallerPath = Join-Path "${ProjectRoot}/release" "${OutputName}-Setup.exe"
+                Copy-Item -Force $SetupFile.FullName $FinalInstallerPath
             }
         }
         Log-Group

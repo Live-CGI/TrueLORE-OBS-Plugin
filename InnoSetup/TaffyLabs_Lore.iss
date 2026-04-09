@@ -43,7 +43,7 @@ OutputBaseFilename={#MyOutputExeName}_v{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 
 ; Optional boilerplate files
 ; Create these later if desired
