@@ -88,10 +88,25 @@ function Package {
         # InnoSetup expects _obs_stage layout at the repo root
         $StageRoot = Join-Path $ProjectRoot "_obs_stage"
         if (Test-Path $StageRoot) { Remove-Item -Recurse -Force $StageRoot }
-        New-Item -ItemType Directory -Force $StageRoot | Out-Null
         
-        # Copy release files to _obs_stage
-        Copy-Item -Recurse -Force "${ProjectRoot}/release/${Configuration}/*" $StageRoot
+        $StagePlugins = Join-Path $StageRoot "obs-plugins\64bit"
+        $StageData = Join-Path $StageRoot "data\obs-plugins\taffylabs_mvp_obs"
+        
+        New-Item -ItemType Directory -Force $StagePlugins | Out-Null
+        New-Item -ItemType Directory -Force $StageData | Out-Null
+        
+        # Copy release files to _obs_stage exactly how InnoSetup expects them
+        # DLLs and PDBs
+        $SrcBin = Join-Path "${ProjectRoot}/release/${Configuration}/taffylabs_mvp_obs" "bin\64bit\*"
+        if (Test-Path $SrcBin) {
+            Copy-Item -Force $SrcBin $StagePlugins
+        }
+        
+        # Data/Locale files
+        $SrcData = Join-Path "${ProjectRoot}/release/${Configuration}/taffylabs_mvp_obs" "data\*"
+        if (Test-Path $SrcData) {
+            Copy-Item -Recurse -Force $SrcData $StageData
+        }
         
         $IssPath = Join-Path $ProjectRoot "InnoSetup\TaffyLabs_Lore.iss"
         if (Test-Path $IssPath) {
