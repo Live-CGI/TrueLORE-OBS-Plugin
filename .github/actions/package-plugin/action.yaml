@@ -108,6 +108,8 @@ runs:
         $PackageArgs = @{
           Target = '${{ inputs.target }}'
           Configuration = '${{ inputs.config }}'
+          Codesign = '${{ inputs.codesign }}'
+          CreatePackage = '${{ inputs.package }}'
         }
 
         .github/scripts/Package-Windows.ps1 @PackageArgs
