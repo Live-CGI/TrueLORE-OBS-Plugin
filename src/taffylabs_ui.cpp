@@ -46,7 +46,6 @@ extern "C" {
 
 }
 
-const char* version = "0.1.1";
 static QAction *g_actionSettings = nullptr;
 static QPointer<QDialog> g_settingsDialog = nullptr;
 static QLabel *g_idLabel = nullptr;
@@ -63,7 +62,7 @@ struct CreateBroadcastContext {
 };
 extern "C" void  taffylabs_show_message(const char *title, const char *message)
 {
-	blog(LOG_INFO, "[TaffyLabs] %s: %s", title, message);
+	blog(LOG_INFO, "[TrueLORE] %s: %s", title, message);
     QMessageBox::information(
         nullptr	,
         title,
@@ -73,7 +72,7 @@ extern "C" void  taffylabs_show_message(const char *title, const char *message)
 
 extern "C" void  taffylabs_show_warning(const char *title, const char *message)
 {
-	blog(LOG_WARNING, "[TaffyLabs] %s: %s", title, message);
+	blog(LOG_WARNING, "[TrueLORE] %s: %s", title, message);
     QMessageBox::warning(
         nullptr,
         title,
@@ -83,7 +82,7 @@ extern "C" void  taffylabs_show_warning(const char *title, const char *message)
 
 extern "C" void  taffylabs_show_error(const char *title, const char *message)
 {
-	blog(LOG_ERROR, "[TaffyLabs] %s: %s", title, message);
+	blog(LOG_ERROR, "[TrueLORE] %s: %s", title, message);
 	QMessageBox::critical(
 		nullptr,
 		title,
@@ -204,13 +203,13 @@ static void populate_broadcast_dropdown_from_json(QComboBox *combo, const QByteA
 
 	if (parseError.error != QJsonParseError::NoError) {
 		blog(LOG_WARNING,
-		     "[TaffyLabs] Failed to parse broadcasts JSON: %s",
+		     "[TrueLORE] Failed to parse broadcasts JSON: %s",
 		     parseError.errorString().toUtf8().constData());
 		return;
 	}
 
 	if (!doc.isArray()) {
-		blog(LOG_WARNING, "[TaffyLabs] broadcasts JSON was not an array");
+		blog(LOG_WARNING, "[TrueLORE] broadcasts JSON was not an array");
 		return;
 	}
 	int iSelectedIndex = -1;
@@ -250,11 +249,11 @@ static void lore_broadcasts_dropdown_callback(const lore_api_result *result, voi
 		static_cast<BroadcastDropdownContext *>(user_data);
 	
 	if (!ctx){
-		blog(LOG_WARNING, "[TaffyLabs] lore_broadcasts_dropdown_callback context=%p", user_data);
+		blog(LOG_WARNING, "[TrueLORE] lore_broadcasts_dropdown_callback context=%p", user_data);
 		return;
 	}
 	if(result->ok != 1){
-		blog(LOG_WARNING, "[TaffyLabs] lore_broadcasts_dropdown_callback called with status=%s", result->body_text);		 		
+		blog(LOG_WARNING, "[TrueLORE] lore_broadcasts_dropdown_callback called with status=%s", result->body_text);		 		
 	}
 
 	QPointer<QComboBox> combo = ctx->combo;
@@ -286,7 +285,7 @@ static void lore_broadcasts_dropdown_callback(const lore_api_result *result, voi
 			                   : QString("Unknown error");
 
 		blog(LOG_WARNING,
-		     "[TaffyLabs] lore_broadcastsGet failed: status=%ld error=%s",
+		     "[TrueLORE] lore_broadcastsGet failed: status=%ld error=%s",
 		     result->status_code,
 		     errorText.toUtf8().constData());
 
@@ -345,7 +344,7 @@ static void load_broadcasts_into_dropdown(QComboBox *combo, QPushButton *loginBu
 	// handle that here.
 	if (!immediate.ok) {
 		blog(LOG_ERROR,
-		     "[TaffyLabs] lore_broadcastsGet immediate failure: status=%ld error=%s",
+		     "[TrueLORE] lore_broadcastsGet immediate failure: status=%ld error=%s",
 		     immediate.status_code,
 		     immediate.error_text ? immediate.error_text : "(none)");
 
@@ -376,7 +375,7 @@ static void on_device_login_tokenReceived(const lore_api_result *result, void *u
 {
     LoginContext *ctx = static_cast<LoginContext*>(user_data);
     if (!ctx) {
-        blog(LOG_WARNING, "[TaffyLabs] on_device_login_tokenReceived called with null context");
+        blog(LOG_WARNING, "[TrueLORE] on_device_login_tokenReceived called with null context");
         return;
     }
 
@@ -412,7 +411,7 @@ static void on_device_login_tokenReceived(const lore_api_result *result, void *u
         delete ctx;
     } else {
         blog(LOG_WARNING,
-             "[TaffyLabs] Authentication exchange code failed: status=%ld error=%s",
+             "[TrueLORE] Authentication exchange code failed: status=%ld error=%s",
              result->status_code,
              result->error_text ? result->error_text : "(none)");
         delete ctx;
@@ -423,7 +422,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 {
 	LoginContext *ctx = static_cast<LoginContext*>(user_data);
 	if (!ctx) {
-		blog(LOG_WARNING, "[TaffyLabs] on_device_login_check called with null context");
+		blog(LOG_WARNING, "[TrueLORE] on_device_login_check called with null context");
 		return;
 	}
 
@@ -445,7 +444,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 		}
 
 		if (result->ok == 1) {
-			blog(LOG_INFO, "[TaffyLabs] Authentication Code Received!");
+			blog(LOG_INFO, "[TrueLORE] Authentication Code Received!");
 
 			QJsonDocument doc = QJsonDocument::fromJson(
 				QByteArray(result->body_text ? result->body_text : ""));
@@ -481,7 +480,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 		}
 		else {
 			blog(LOG_WARNING,
-				"[TaffyLabs] Authentication check failed: status=%ld error=%s",
+				"[TrueLORE] Authentication check failed: status=%ld error=%s",
 				result->status_code,
 				result->error_text ? result->error_text : "(none)");
 
@@ -509,7 +508,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 	}
 	else {
 		QString finalStatus = ctx->abort ? "Aborted by User" : "Timed Out";
-		blog(LOG_WARNING, "[TaffyLabs] Authentication %s", finalStatus.toUtf8().constData());
+		blog(LOG_WARNING, "[TrueLORE] Authentication %s", finalStatus.toUtf8().constData());
 
 		if (loginButton) {
 			QMetaObject::invokeMethod(
@@ -538,7 +537,7 @@ static void on_device_login(const lore_api_result *result, void *user_data)
 {
 	LoginContext *ctx = static_cast<LoginContext*>(user_data);
 	if (!ctx) {
-		blog(LOG_WARNING, "[TaffyLabs] on_device_login called with null context");
+		blog(LOG_WARNING, "[TrueLORE] on_device_login called with null context");
 		return;
 	}
 
@@ -618,7 +617,7 @@ static void on_device_login(const lore_api_result *result, void *user_data)
 				Qt::QueuedConnection);
 		}
 
-		blog(LOG_WARNING, "[TaffyLabs] Failed to start device login check");
+		blog(LOG_WARNING, "[TrueLORE] Failed to start device login check");
 		delete ctx;
 	}
 }
@@ -637,16 +636,16 @@ static void open_taffylabs_settings_dialog()
 
 	QDialog *dlg = new QDialog(parent);
 	dlg->setAttribute(Qt::WA_DeleteOnClose, true);
-	dlg->setWindowTitle("TaffyLabs Lore Settings v" + QString::fromUtf8(PLUGIN_VERSION));
+	dlg->setWindowTitle("TrueLORE Settings v" + QString::fromUtf8(PLUGIN_VERSION));
 	dlg->resize(500, 520);
 
 	QObject::connect(dlg, &QDialog::finished,
     [](int result) {
         if (result == QDialog::Accepted) {
-            blog(LOG_INFO, "[TaffyLabs] Dialog accepted");
+            blog(LOG_INFO, "[TrueLORE] Dialog accepted");
         } else {
 
-            blog(LOG_INFO, "[TaffyLabs] Dialog rejected/closed");
+            blog(LOG_INFO, "[TrueLORE] Dialog rejected/closed");
         }
     });
 
@@ -654,7 +653,7 @@ static void open_taffylabs_settings_dialog()
 
 	// Enable Lore Stream (top)
 	QCheckBox *enableLoreStreamCheck =
-		new QCheckBox("Enable Lore Stream", dlg);
+		new QCheckBox("Enable TrueLORE Stream", dlg);
 	enableLoreStreamCheck->setChecked(taffylabs_get_enabled());
 	rootLayout->addWidget(enableLoreStreamCheck);
 
@@ -663,7 +662,7 @@ static void open_taffylabs_settings_dialog()
 	enforce2kCheck->setChecked(taffylabs_get_enforce_2k_fps());
 	rootLayout->addWidget(enforce2kCheck);
 
-	QLabel *enforceWarningLabel = new QLabel("Please note, it is STRONGLY recommended to enable a 2 Keyframe Per Second minimum.  Most streaming targets already enforce this, but any that do not WILL BE MODIFIED when Lore is enabled.", dlg);
+	QLabel *enforceWarningLabel = new QLabel("Please note, it is STRONGLY recommended to enable a 2 Keyframe Per Second minimum.  Most streaming targets already enforce this, but any that do not WILL BE MODIFIED when TrueLORE is enabled.", dlg);
 	enforceWarningLabel->setStyleSheet("QLabel { color : red; font-weight: bold; }");
 	enforceWarningLabel->setWordWrap(true);
 	enforceWarningLabel->setVisible(!taffylabs_get_enforce_2k_fps());
@@ -772,14 +771,14 @@ static void open_taffylabs_settings_dialog()
 				QByteArray(taffylabs_get_broadcast_array()));
 			if (!doc.isArray()) {
 				blog(LOG_WARNING,
-				     "[TaffyLabs] Broadcast array JSON was not an array");
+				     "[TrueLORE] Broadcast array JSON was not an array");
 				return;
 			}
 
 			QJsonArray arr = doc.array();
 			if (iSelected < 0 || iSelected >= arr.size()) {
 				blog(LOG_WARNING,
-				     "[TaffyLabs] Broadcast dropdown index out of range: %d",
+				     "[TrueLORE] Broadcast dropdown index out of range: %d",
 				     iSelected);
 				return;
 			}
@@ -798,7 +797,7 @@ static void open_taffylabs_settings_dialog()
 		[titleEdit, descriptionEdit, broadcastsDropdown, loginButton, dlg]() {
 			int iSelected = broadcastsDropdown->currentIndex();
 			blog(LOG_INFO,
-			     "[TaffyLabs] Update metadata clicked for index %d",
+			     "[TrueLORE] Update metadata clicked for index %d",
 			     iSelected);
 
 				taffylabs_set_title(titleEdit->text().toUtf8().constData());
@@ -815,11 +814,11 @@ static void open_taffylabs_settings_dialog()
 			
 			if (!result.ok) {
 				taffylabs_show_error("Error", "Could not update broadcast metadata");
-				blog(LOG_WARNING, "[TaffyLabs] Could not update broadcast metadata: %s", result.error_text ? result.error_text : "no response");
+				blog(LOG_WARNING, "[TrueLORE] Could not update broadcast metadata: %s", result.error_text ? result.error_text : "no response");
 			}
 			// Put your API/update logic here
 			blog(LOG_INFO,
-			     "[TaffyLabs] Updated broadcast metadata: title='%s'",
+			     "[TrueLORE] Updated broadcast metadata: title='%s'",
 			     titleEdit->text().toUtf8().constData());
 			load_broadcasts_into_dropdown(broadcastsDropdown, loginButton, dlg);	
 		});
@@ -836,7 +835,7 @@ static void open_taffylabs_settings_dialog()
 			taffylabs_set_enforce_2k_fps(enforce2kCheck->isChecked());
 
 			blog(LOG_INFO,
-			     "[TaffyLabs] Selected dropdown value: %s",
+			     "[TrueLORE] Selected dropdown value: %s",
 			     broadcastsDropdown->currentText().toUtf8().constData());
 
 			taffylabs_set_title(titleEdit->text().toUtf8().constData());
@@ -849,7 +848,7 @@ static void open_taffylabs_settings_dialog()
 			taffylabs_save_settings();
 
 			blog(LOG_INFO,
-			     "[TaffyLabs] settings saved: enabled=%s",
+			     "[TrueLORE] settings saved: enabled=%s",
 			     enableLoreStreamCheck->isChecked() ? "true" : "false");
 
 			dlg->accept();
@@ -898,14 +897,14 @@ static void taffylabs_remove_status_indicator()
 extern "C" void taffylabs_ui_init()
 {
 	taffylabs_add_status_indicator();
-	taffylabs_update_status_indicator("Taffylabs Lore Initializing!");
+	taffylabs_update_status_indicator("Taffylabs TrueLORE Initializing!");
 	taffylabs_load_settings();
 	if(lore_authConfirm(taffylabs_get_bearer_token())){
-		blog(LOG_INFO, "[TaffyLabs] Authentication confirmed successfully on UI init.");		
-		taffylabs_update_status_indicator("Taffylabs Lore Authenticated Successfully!");
+		blog(LOG_INFO, "[TrueLORE] Authentication confirmed successfully on UI init.");		
+		taffylabs_update_status_indicator("Taffylabs TrueLORE Authenticated Successfully!");
 	}else{
 		taffylabs_clear_settings();
-		taffylabs_update_status_indicator("Please Authenticate Taffylabs Lore!");
+		taffylabs_update_status_indicator("Please Authenticate Taffylabs TrueLORE!");
 	}
 
 	//if(false){
@@ -936,7 +935,7 @@ extern "C" void taffylabs_ui_init()
 	
 
 	g_actionSettings = static_cast<QAction *>(
-		obs_frontend_add_tools_menu_qaction((std::string("TaffyLabs Lore Settings")).c_str()));
+		obs_frontend_add_tools_menu_qaction((std::string("TaffyLabs TrueLORE Settings")).c_str()));
 
 	if (!g_actionSettings)
 		return;

@@ -18,7 +18,7 @@ using json = nlohmann::json;
 
 namespace {
 
-static const std::string kLoreApiUrl = "https://api.true-lore.com";
+static const std::string kLoreApiUrl = "https://api.true-lore.com/";
 //static const std::string kLoreApiUrlDev = "https://dev-api.tome-lore.com/";
 
 static char *dup_cstr(const std::string &s)
@@ -102,7 +102,7 @@ char *taffylabs_create_metadata_json(char* state)
 		}},
 		{"state", stateStr}
 	};
-	blog(LOG_INFO, "[TaffyLabs] Created metadata JSON: %s", jsonObj.dump().c_str());
+	blog(LOG_INFO, "[TrueLORE] Created metadata JSON: %s", jsonObj.dump().c_str());
 	char *out = dup_cstr(jsonObj.dump());
 	return out;
 }
@@ -149,7 +149,7 @@ extern "C" lore_api_result lore_me(
     if (!callback) {
         taffy_json_http_response resp =
             taffy_json_http_request("GET", entryPointTmp.c_str(), nullptr, headers, 1);
-		blog(LOG_INFO, "[TaffyLabs] lore_me sync call returned status=%ld body=%s", resp.status_code, resp.body ? resp.body : "(none)");
+		blog(LOG_INFO, "[TrueLORE] lore_me sync call returned status=%ld body=%s", resp.status_code, resp.body ? resp.body : "(none)");
         lore_api_result result = build_result(resp);
         taffy_json_http_free(&resp);
         return result;
@@ -640,7 +640,7 @@ extern "C" lore_api_result lore_broadcastsUpdate(const char *bearer, const char 
 		return result;
 	}
 
-	blog(LOG_INFO, "[TaffyLabs] Updating broadcast metadata: %s", jsonData);
+	blog(LOG_INFO, "[TrueLORE] Updating broadcast metadata: %s", jsonData);
 	
 	const char *entryPoint = sEntryPoint.c_str();
 	if (!callback) {

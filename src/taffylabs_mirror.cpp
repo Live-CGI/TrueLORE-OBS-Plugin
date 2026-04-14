@@ -48,10 +48,10 @@ extern "C" {
 
 bool taffylabs_mirror_start(void)
 {
-	blog(LOG_INFO, "[TaffyLabs] autoBroadcast enabled, creating new broadcast before starting mirror...");
+	blog(LOG_INFO, "[TrueLORE] autoBroadcast enabled, creating new broadcast before starting mirror...");
 
 	if (g_mirror_output) {
-		blog(LOG_WARNING, "[TaffyLabs] mirror already started?");
+		blog(LOG_WARNING, "[TrueLORE] mirror already started?");
 		return true;
 	}
 
@@ -59,18 +59,18 @@ bool taffylabs_mirror_start(void)
 		taffylabs_get_bearer_token(), NULL, NULL, NULL);
 
 	if (!rNew.ok) {
-		blog(LOG_WARNING, "[TaffyLabs] failed to create new broadcast: %s", rNew.error_text ? rNew.error_text : "unknown error");
+		blog(LOG_WARNING, "[TrueLORE] failed to create new broadcast: %s", rNew.error_text ? rNew.error_text : "unknown error");
 		taffylabs_update_status_indicator("Failed to create new broadcast!");
 		taffylabs_show_error("Failed to create new broadcast!", rNew.error_text ? rNew.error_text : "unknown error");	
 		return false;
 	} else {
-		blog(LOG_INFO, "[TaffyLabs] created new broadcast successfully!");
+		blog(LOG_INFO, "[TrueLORE] created new broadcast successfully!");
 	}
 
 	taffylabs_set_selected_broadcast_object(rNew.body_text);
 	obs_output_t *primary = obs_frontend_get_streaming_output();
 	if (!primary) {
-		blog(LOG_WARNING, "[TaffyLabs] no primary streaming output available");
+		blog(LOG_WARNING, "[TrueLORE] no primary streaming output available");
 		taffylabs_update_status_indicator("No primary streaming output available!");
 		taffylabs_show_error("No primary streaming output available!", "Please start streaming in OBS first.");
 		return false;
@@ -81,12 +81,12 @@ bool taffylabs_mirror_start(void)
 
 	mirror_build_service(STREAM_SERVER, STREAM_KEY);
 	if (!g_mirror_service) {
-		blog(LOG_ERROR, "[TaffyLabs] failed to create mirror RTMP service");
+		blog(LOG_ERROR, "[TrueLORE] failed to create mirror RTMP service");
 		taffylabs_update_status_indicator("Failed to create mirror RTMP service!");
 		taffylabs_show_error("Failed to create mirror RTMP service!", "Please check your stream server and stream key.");
 		return false;
 	}else{
-		blog(LOG_INFO, "[TaffyLabs] mirror RTMP service created successfully\n" 
+		blog(LOG_INFO, "[TrueLORE] mirror RTMP service created successfully\n" 
 			    "    Server    = %s\n" 
 				"    Stream Key= %s\n", 
 				STREAM_SERVER, STREAM_KEY);
@@ -94,7 +94,7 @@ bool taffylabs_mirror_start(void)
 
 	g_mirror_output = obs_output_create("rtmp_output", "taffylabs_mirror_output", NULL, NULL);
 	if (!g_mirror_output) {
-		blog(LOG_ERROR, "[TaffyLabs] failed to create mirror RTMP output");
+		blog(LOG_ERROR, "[TrueLORE] failed to create mirror RTMP output");
 		taffylabs_update_status_indicator("Failed to create mirror RTMP output!");
 		taffylabs_show_error("Failed to create mirror RTMP output!", "Please check your stream server and stream key.");
 		mirror_release_all();
@@ -107,7 +107,7 @@ bool taffylabs_mirror_start(void)
 	obs_encoder_t *aenc = obs_output_get_audio_encoder(primary, 0);
 
 	if (!venc || !aenc) {
-		blog(LOG_ERROR, "[TaffyLabs] failed to get encoders from primary output");
+		blog(LOG_ERROR, "[TrueLORE] failed to get encoders from primary output");
 		taffylabs_update_status_indicator("Failed to get encoders from primary output!");
 		mirror_release_all();
 		taffylabs_show_error("Failed to get encoders from primary output!", "Please check your stream server and stream key.");
@@ -118,13 +118,13 @@ bool taffylabs_mirror_start(void)
 	obs_output_set_audio_encoder(g_mirror_output, aenc, 0);
 
 	if (!obs_output_start(g_mirror_output)) {
-		blog(LOG_ERROR, "[TaffyLabs] mirror obs_output_start failed");
+		blog(LOG_ERROR, "[TrueLORE] mirror obs_output_start failed");
 		taffylabs_update_status_indicator("Failed to start mirror!");
 		mirror_release_all();
 		taffylabs_show_error("Failed to start mirror!", "Please check your stream server and stream key.");
 		return false;
 	}
-	blog(LOG_INFO, "[TaffyLabs] mirror started successfully!");
+	blog(LOG_INFO, "[TrueLORE] mirror started successfully!");
 
 	std::string msg = "Streaming to: " + std::string(taffylabs_get_title());
 	taffylabs_update_status_indicator(msg.c_str());
@@ -133,15 +133,15 @@ bool taffylabs_mirror_start(void)
 
 void taffylabs_mirror_stop(void)
 {
-	blog(LOG_INFO, "[TaffyLabs] stop mirror requested...");
+	blog(LOG_INFO, "[TrueLORE] stop mirror requested...");
 
 	if (!g_mirror_output) {
-		blog(LOG_WARNING, "[TaffyLabs] mirror not running, take a nap instead.");
+		blog(LOG_WARNING, "[TrueLORE] mirror not running, take a nap instead.");
 		taffylabs_update_status_indicator("Mirror not running!");
 		return;
 	}
 
-	blog(LOG_INFO, "[TaffyLabs] stopping mirror");
+	blog(LOG_INFO, "[TrueLORE] stopping mirror");
 	obs_output_stop(g_mirror_output);
 	mirror_release_all();
 	taffylabs_update_status_indicator("Mirror stopped successfully!");

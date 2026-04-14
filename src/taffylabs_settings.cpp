@@ -257,11 +257,11 @@ void taffylabs_set_selected_broadcast_object(const char *broadcastObject)
 {
 	if (is_valid_json(broadcastObject)) {
 		copy_text(g_selectedBroadcastObject, sizeof(g_selectedBroadcastObject), broadcastObject);
-		blog(LOG_INFO, "[TaffyLabs] Selected broadcast object set successfully. ID=%s",
+		blog(LOG_INFO, "[TrueLORE] Selected broadcast object set successfully. ID=%s",
 		     taffylabs_get_streamID());
 	} else {
 		blog(LOG_ERROR,
-		     "[TaffyLabs] Invalid JSON for selected broadcast object, ignoring.\n Data: %s",
+		     "[TrueLORE] Invalid JSON for selected broadcast object, ignoring.\n Data: %s",
 		     broadcastObject ? broadcastObject : "(null)");
 	}
 }
@@ -290,7 +290,7 @@ void taffylabs_set_unique_id(const char *uniqueID)
 
 void taffylabs_save_settings(void)
 {
-	blog(LOG_INFO, "[TaffyLabs] Saving settings...");
+	blog(LOG_INFO, "[TrueLORE] Saving settings...");
 
 	config_t *cfg = obs_frontend_get_user_config();
 	if (!cfg)
@@ -309,7 +309,7 @@ void taffylabs_save_settings(void)
 
 void taffylabs_load_settings(void)
 {
-	blog(LOG_INFO, "[TaffyLabs] Loading settings...");
+	blog(LOG_INFO, "[TrueLORE] Loading settings...");
 
 	config_t *cfg = obs_frontend_get_user_config();
 
@@ -353,7 +353,7 @@ void taffylabs_load_settings(void)
 
 void taffylabs_clear_settings(void)
 {
-	blog(LOG_INFO, "[TaffyLabs] Clearing settings...");
+	blog(LOG_INFO, "[TrueLORE] Clearing settings...");
 
 	g_enabled = false;
 	g_optional_metadata_enabled = false;

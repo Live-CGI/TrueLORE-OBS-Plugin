@@ -9,20 +9,20 @@ static bool enforce_stream_keyframe_interval_impl()
 {
     obs_output_t *output = obs_frontend_get_streaming_output();
     if (!output) {
-        blog(LOG_WARNING, "[TaffyLabs] No streaming output available during STREAMING_STARTING");
+        blog(LOG_WARNING, "[TrueLORE] No streaming output available during STREAMING_STARTING");
         return false;
     }
 
     obs_encoder_t *video_encoder = obs_output_get_video_encoder(output);
     if (!video_encoder) {
-        blog(LOG_WARNING, "[TaffyLabs] No video encoder on current streaming output");
+        blog(LOG_WARNING, "[TrueLORE] No video encoder on current streaming output");
         obs_output_release(output);
         return false;
     }
 
     obs_data_t *settings = obs_encoder_get_settings(video_encoder);
     if (!settings) {
-        blog(LOG_WARNING, "[TaffyLabs] Failed to get streaming encoder settings");
+        blog(LOG_WARNING, "[TrueLORE] Failed to get streaming encoder settings");
         obs_output_release(output);
         return false;
     }
@@ -32,7 +32,7 @@ static bool enforce_stream_keyframe_interval_impl()
     const char *encoder_id = obs_encoder_get_id(video_encoder);
 
     blog(LOG_INFO,
-         "[TaffyLabs] Streaming encoder check: name='%s' id='%s' keyint_sec=%lld",
+         "[TrueLORE] Streaming encoder check: name='%s' id='%s' keyint_sec=%lld",
          encoder_name ? encoder_name : "(unknown)",
          encoder_id ? encoder_id : "(unknown)",
          keyint_sec);
@@ -45,7 +45,7 @@ static bool enforce_stream_keyframe_interval_impl()
         changed = true;
 
         blog(LOG_WARNING,
-             "[TaffyLabs] Enforced runtime keyframe interval to 2 seconds "
+             "[TrueLORE] Enforced runtime keyframe interval to 2 seconds "
              "(previous keyint_sec=%lld)",
              keyint_sec);
     }

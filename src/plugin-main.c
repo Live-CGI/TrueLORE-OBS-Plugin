@@ -43,9 +43,9 @@ static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 
 	switch (event) {
 	case OBS_FRONTEND_EVENT_STREAMING_STARTING:
-		blog(LOG_INFO, "[TaffyLabs] streaming starting...");
+		blog(LOG_INFO, "[TrueLORE] streaming starting...");
 		if(taffylabs_get_enforce_2k_fps()){
-			blog(LOG_INFO, "[TaffyLabs] Enforcing 2 Keyframes per second minimum...");
+			blog(LOG_INFO, "[TrueLORE] Enforcing 2 Keyframes per second minimum...");
 			taffylabs_enforce_stream_keyframe_interval();
 		}
 		break;
@@ -57,11 +57,11 @@ static void on_frontend_event(enum obs_frontend_event event, void *private_data)
 
 
 	case OBS_FRONTEND_EVENT_STREAMING_STOPPING:
-		blog(LOG_INFO, "[TaffyLabs] streaming stopping...");
+		blog(LOG_INFO, "[TrueLORE] streaming stopping...");
 		break;
 
 	case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
-		blog(LOG_INFO, "[TaffyLabs] streaming stopped!");
+		blog(LOG_INFO, "[TrueLORE] streaming stopped!");
 		taffylabs_mirror_stop();
 		break;
 
@@ -80,11 +80,11 @@ bool obs_module_load(void)
 		taffylabs_set_unique_id(resp);
 		taffylabs_save_settings();
 	} else {
-		blog(LOG_WARNING, "[TaffyLabs] Could not get unique device ID: %s", resp ? resp : "no response");
+		blog(LOG_WARNING, "[TrueLORE] Could not get unique device ID: %s", resp ? resp : "no response");
 	}
 	taffylabs_ui_init();
 	obs_frontend_add_event_callback(on_frontend_event, NULL);
-	blog(LOG_INFO, "[TaffyLabs] loaded (enabled=%s)",taffylabs_get_enabled() ? "true" : "false");
+	blog(LOG_INFO, "[TrueLORE] loaded (enabled=%s)",taffylabs_get_enabled() ? "true" : "false");
 	return true;
 }
 

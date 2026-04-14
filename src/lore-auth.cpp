@@ -74,7 +74,7 @@ QString AuthManager::authenticate(const QString &apiBaseUrl, bool forceLogin)
 	clearToken();
 
 	if (loginInProgress_) {
-		blog(LOG_INFO, "[TaffyLabs] auth already in progress");
+		blog(LOG_INFO, "[TrueLORE] auth already in progress");
 		return QString();
 	}
 
@@ -104,7 +104,7 @@ bool AuthManager::startCallbackServer()
 	}
 
 	if (!server_->listen(QHostAddress::LocalHost, 0)) {
-		blog(LOG_WARNING, "[TaffyLabs] failed to listen on localhost: %s",
+		blog(LOG_WARNING, "[TrueLORE] failed to listen on localhost: %s",
 		     server_->errorString().toUtf8().constData());
 		delete server_;
 		server_ = nullptr;
@@ -114,7 +114,7 @@ bool AuthManager::startCallbackServer()
 	callbackPort_ = static_cast<int>(server_->serverPort());
 	pendingState_ = randomStateToken();
 
-	blog(LOG_INFO, "[TaffyLabs] auth callback server listening on 127.0.0.1:%d",
+	blog(LOG_INFO, "[TrueLORE] auth callback server listening on 127.0.0.1:%d",
 	     callbackPort_);
 
 	return true;
@@ -155,7 +155,7 @@ void AuthManager::openLoginBrowser()
 {
 	QString loginUrl = buildLoginUrl();
 
-	blog(LOG_INFO, "[TaffyLabs] opening auth URL: %s",
+	blog(LOG_INFO, "[TrueLORE] opening auth URL: %s",
 	     loginUrl.toUtf8().constData());
 
 	bool ok = QDesktopServices::openUrl(QUrl(loginUrl));
@@ -245,7 +245,7 @@ void AuthManager::handleCallbackRequest(QTcpSocket *socket, const QString &reque
 	taffylabs_set_bearer_token(token.toUtf8().constData());
 	taffylabs_save_settings();
 
-	blog(LOG_INFO, "[TaffyLabs] authentication succeeded; token stored");
+	blog(LOG_INFO, "[TrueLORE] authentication succeeded; token stored");
 
 	if (socket) {
 		sendHttpResponse(
