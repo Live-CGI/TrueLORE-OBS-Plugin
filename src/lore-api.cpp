@@ -17,7 +17,9 @@
 using json = nlohmann::json;
 
 namespace {
-static const std::string kLoreApiUrl = "https://dev-api.tome-lore.com/";
+
+static const std::string kLoreApiUrl = "https://api.true-lore.com";
+static const std::string kLoreApiUrlDev = "https://dev-api.tome-lore.com/";
 
 static char *dup_cstr(const std::string &s)
 {
@@ -188,16 +190,15 @@ extern "C" lore_api_result lore_deviceLogin(
 {
     std::string strHexId = hexID ? std::string(hexID) : std::string();
     std::string entryPointTmp = kLoreApiUrl + "auth/device-login?rid=" + strHexId;
-
+	
     if (!callback) {
         taffy_json_http_response resp =
             taffy_json_http_request("GET", entryPointTmp.c_str(), nullptr, nullptr, 0);
 
         lore_api_result result = build_result(resp);
         taffy_json_http_free(&resp);
-        return result;
+		return result;
     }
-
     AsyncContext *ctx = new AsyncContext();
     ctx->callback = callback;
     ctx->user_data = user_data;
@@ -215,7 +216,6 @@ extern "C" lore_api_result lore_deviceLogin(
 
     if (!started) {
         delete ctx;
-
         lore_api_result result{};
         result.ok = 0;
         result.error_text = dup_cstr("Failed to start async HTTP request");

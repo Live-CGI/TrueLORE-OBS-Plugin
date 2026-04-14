@@ -27,7 +27,8 @@
 
 namespace
 {
-	static const char *DEFAULT_SERVER = "rtmps://dev-rtmp.tome-lore.com:443/live";
+	static const char *DEFAULT_DEV_SERVER = "rtmps://dev-rtmp.tome-lore.com:443/live";
+	static const char *DEFAULT_SERVER = "rtmps://live.true-lore.com:443/live";
 
 	static bool g_enabled = true;
 	static bool g_optional_metadata_enabled = false;

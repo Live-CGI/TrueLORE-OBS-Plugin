@@ -16,7 +16,7 @@
 #define MyAppVersion "2026.03.23.1500"
 #endif
 #define MyAppPublisher "TaffyLabs"
-#define MyAppURL "https://your-site-here.example"
+#define MyAppURL "https://www.taffylabs.io/"
 #define MyPluginDll "taffylabs_mvp_obs.dll"
 #define MyPluginFolder "taffylabs_mvp_obs"
 #define MyOutputExeName "TaffyLabs_OBS_Plugin_Setup"
