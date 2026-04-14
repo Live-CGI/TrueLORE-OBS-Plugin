@@ -19,7 +19,7 @@ using json = nlohmann::json;
 namespace {
 
 static const std::string kLoreApiUrl = "https://api.true-lore.com";
-static const std::string kLoreApiUrlDev = "https://dev-api.tome-lore.com/";
+//static const std::string kLoreApiUrlDev = "https://dev-api.tome-lore.com/";
 
 static char *dup_cstr(const std::string &s)
 {
