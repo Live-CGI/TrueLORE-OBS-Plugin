@@ -5,6 +5,7 @@ param(
   [string]$Preset = "windows-x64",
 
   [switch]$Asan,
+  [switch]$NoRun,
 
   # Change this if OBS is installed elsewhere
   [string]$ObsExe = "C:\Program Files\obs-studio\bin\64bit\obs64.exe"
@@ -108,18 +109,20 @@ if ($Asan) {
 #Write-Host "== Launch OBS ==" -ForegroundColor Green
 #Start-Process -FilePath $ObsExe -WorkingDirectory (Split-Path -Parent $ObsExe)
 
-Write-Host "== Launch OBS CMD Out==" -ForegroundColor Green
+if (!$NoRun) {
+    Write-Host "== Launch OBS CMD Out==" -ForegroundColor Green
 
-$obsDir = Split-Path -Parent $ObsExe
-Push-Location $obsDir
-try {
-    & $ObsExe
-    $obsExitCode = $LASTEXITCODE
-}
-finally {
-    Pop-Location
-}
+    $obsDir = Split-Path -Parent $ObsExe
+    Push-Location $obsDir
+    try {
+        & $ObsExe
+        $obsExitCode = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
 
-if ($null -ne $obsExitCode) {
-    exit $obsExitCode
+    if ($null -ne $obsExitCode) {
+        exit $obsExitCode
+    }
 }

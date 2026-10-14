@@ -9,7 +9,10 @@
 #include <QCoreApplication>
 #include <QDialog>
 #include <QFormLayout>
+#include <QFrame>
+#include <QGridLayout>
 #include <QGroupBox>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -24,6 +27,7 @@
 #include <QPushButton>
 #include <QStatusBar>
 #include <QStringList>
+#include <QStyle>
 #include <QTextEdit>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -160,6 +164,211 @@ extern "C" void taffylabs_update_status_indicator(const char *idText)
 	});
 }
 
+// Settings dialog look & feel. Colors and font sizes are derived from the active
+// OBS theme so the dialog fits both dark and light themes.
+
+enum class AuthUiState { Checking, SignedOut, Starting, Waiting, SignedIn, Failed };
+
+static QString css_rgba(QColor color, qreal alpha = -1.0)
+{
+	if (alpha >= 0.0)
+		color.setAlphaF(alpha);
+	return QString("rgba(%1, %2, %3, %4)")
+		.arg(color.red())
+		.arg(color.green())
+		.arg(color.blue())
+		.arg(color.alpha());
+}
+
+static void repolish(QWidget *widget)
+{
+	widget->style()->unpolish(widget);
+	widget->style()->polish(widget);
+	widget->update();
+}
+
+// Fits the dialog's height to its content. sizeHint() overestimates word-wrapped
+// labels, so ask the layout for the height at the current width instead.
+static void fit_dialog_height(QWidget *dialog)
+{
+	QLayout *layout = dialog->layout();
+	if (!layout)
+		return;
+	const int height = layout->hasHeightForWidth() ? layout->totalHeightForWidth(dialog->width())
+						       : layout->totalSizeHint().height();
+	dialog->resize(dialog->width(), height);
+}
+
+static QString settings_dialog_stylesheet(const QPalette &palette, qreal basePointSize)
+{
+	const QColor text = palette.color(QPalette::WindowText);
+	const QColor accent = palette.color(QPalette::Highlight);
+	const QColor accentText = palette.color(QPalette::HighlightedText);
+	const QColor warning(210, 153, 34);
+
+	QString qss = QStringLiteral(R"(
+		QLabel#loreTitle { font-size: @titleSize@pt; font-weight: 600; }
+		QLabel#loreSectionLabel { color: @muted@; font-size: @smallSize@pt; font-weight: 600; }
+		QLabel[loreMuted="true"] { color: @muted@; }
+		QFrame#loreCard { background-color: @base@; border: 1px solid @border@; border-radius: 8px; }
+		QFrame#loreDivider { background-color: @border@; border: none; min-height: 1px; max-height: 1px; }
+		QFrame#loreCallout { background-color: @warningBg@; border: 1px solid @warningBorder@; border-radius: 6px; }
+		QLabel#loreAuthStatus { font-weight: 600; }
+		QLabel#loreAuthDot {
+			min-width: 10px; max-width: 10px; min-height: 10px; max-height: 10px;
+			border-radius: 5px; background-color: @idle@;
+		}
+		QLabel#loreAuthDot[loreTone="ok"] { background-color: #2EA043; }
+		QLabel#loreAuthDot[loreTone="busy"] { background-color: #D29922; }
+		QLabel#loreAuthDot[loreTone="error"] { background-color: #DA3633; }
+		QPushButton[loreRole="primary"] {
+			background-color: @accent@; border-color: @accent@; color: @accentText@; font-weight: 600;
+		}
+		QPushButton[loreRole="primary"]:hover { background-color: @accentHover@; border-color: @accentHover@; }
+		QPushButton[loreRole="primary"]:focus { border-color: @accentHover@; }
+		QPushButton[loreRole="primary"]:pressed { background-color: @accentPressed@; border-color: @accentPressed@; }
+		QPushButton[loreRole="primary"]:disabled {
+			background-color: @accentDisabled@; border-color: transparent; color: @accentTextDisabled@;
+		}
+	)");
+
+	const QHash<QString, QString> tokens = {
+		{"@titleSize@", QString::number(basePointSize * 1.6, 'f', 1)},
+		{"@smallSize@", QString::number(basePointSize * 0.85, 'f', 1)},
+		{"@muted@", css_rgba(text, 0.62)},
+		{"@idle@", css_rgba(text, 0.35)},
+		{"@border@", css_rgba(text, 0.12)},
+		{"@base@", css_rgba(palette.color(QPalette::Base))},
+		{"@warningBg@", css_rgba(warning, 0.14)},
+		{"@warningBorder@", css_rgba(warning, 0.5)},
+		{"@accent@", css_rgba(accent)},
+		{"@accentHover@", css_rgba(accent.lighter(115))},
+		{"@accentPressed@", css_rgba(accent.darker(115))},
+		{"@accentDisabled@", css_rgba(accent, 0.4)},
+		{"@accentText@", css_rgba(accentText)},
+		{"@accentTextDisabled@", css_rgba(accentText, 0.6)},
+	};
+	for (auto it = tokens.constBegin(); it != tokens.constEnd(); ++it)
+		qss.replace(it.key(), it.value());
+
+	return qss;
+}
+
+static QLabel *make_section_label(const QString &text, QWidget *parent)
+{
+	QLabel *label = new QLabel(text.toUpper(), parent);
+	label->setObjectName("loreSectionLabel");
+	QFont font = label->font();
+	font.setLetterSpacing(QFont::AbsoluteSpacing, 1.0);
+	label->setFont(font);
+	return label;
+}
+
+static QFrame *make_card(QWidget *parent)
+{
+	QFrame *card = new QFrame(parent);
+	card->setObjectName("loreCard");
+	QVBoxLayout *layout = new QVBoxLayout(card);
+	layout->setContentsMargins(16, 14, 16, 14);
+	layout->setSpacing(6);
+	return card;
+}
+
+static QLabel *make_hint(const QString &text, QWidget *parent, QCheckBox *alignWith = nullptr)
+{
+	QLabel *hint = new QLabel(text, parent);
+	hint->setProperty("loreMuted", true);
+	hint->setWordWrap(true);
+	if (alignWith) {
+		// Line the hint up with the checkbox text rather than its indicator.
+		QStyle *style = alignWith->style();
+		const int indent = style->pixelMetric(QStyle::PM_IndicatorWidth, nullptr, alignWith) +
+				   style->pixelMetric(QStyle::PM_CheckBoxLabelSpacing, nullptr, alignWith);
+		hint->setContentsMargins(indent, 0, 0, 0);
+	}
+	return hint;
+}
+
+// Updates the account card (status dot, status text, detail line) and the
+// sign-in button together. Must be called on the Qt UI thread.
+static void set_auth_state(QPushButton *button, AuthUiState state, const QString &detail = QString())
+{
+	if (!button)
+		return;
+
+	QString tone = "idle";
+	QString statusText;
+	QString detailText = detail;
+	QString buttonText = "Sign In";
+	bool buttonEnabled = true;
+	bool primary = true;
+
+	switch (state) {
+	case AuthUiState::Checking:
+		statusText = "Checking your account…";
+		buttonEnabled = false;
+		break;
+	case AuthUiState::SignedOut:
+		statusText = "Not signed in";
+		if (detailText.isEmpty())
+			detailText = "Sign in to choose a broadcast and stream to TrueLORE.";
+		break;
+	case AuthUiState::Starting:
+		tone = "busy";
+		statusText = "Starting sign-in…";
+		buttonEnabled = false;
+		break;
+	case AuthUiState::Waiting:
+		tone = "busy";
+		statusText = "Waiting for browser sign-in";
+		if (detailText.isEmpty())
+			detailText = "Continue in your browser to finish signing in.";
+		buttonText = "Waiting…";
+		buttonEnabled = false;
+		break;
+	case AuthUiState::SignedIn:
+		tone = "ok";
+		statusText = "Signed in";
+		buttonText = "Sign Out";
+		primary = false;
+		break;
+	case AuthUiState::Failed:
+		tone = "error";
+		statusText = "Sign-in didn't complete";
+		if (detailText.isEmpty())
+			detailText = "Something went wrong. Please try again.";
+		buttonText = "Try Again";
+		break;
+	}
+
+	button->setProperty("loreAuthState", static_cast<int>(state));
+	button->setProperty("loreRole", primary ? "primary" : "secondary");
+	button->setText(buttonText);
+	button->setEnabled(buttonEnabled);
+	repolish(button);
+
+	QWidget *dialog = button->window();
+	if (QLabel *dot = dialog->findChild<QLabel *>("loreAuthDot")) {
+		dot->setProperty("loreTone", tone);
+		repolish(dot);
+	}
+	if (QLabel *status = dialog->findChild<QLabel *>("loreAuthStatus"))
+		status->setText(statusText);
+	if (QLabel *detailLabel = dialog->findChild<QLabel *>("loreAuthDetail")) {
+		const bool wasShown = !detailLabel->isHidden();
+		detailLabel->setText(detailText);
+		detailLabel->setVisible(!detailText.isEmpty());
+		if (wasShown != !detailLabel->isHidden() && dialog->isVisible())
+			QTimer::singleShot(0, dialog, [dialog]() { fit_dialog_height(dialog); });
+	}
+}
+
+static bool is_signed_in_state(QPushButton *button)
+{
+	return button &&
+	       button->property("loreAuthState").toInt() == static_cast<int>(AuthUiState::SignedIn);
+}
+
 static void sortByUpdatedAt(QJsonArray& arr, const QString& sortBy)
 {
     QVector<QJsonValue> vec;
@@ -273,8 +482,7 @@ static void lore_broadcasts_dropdown_callback(const lore_api_result *result, voi
 				return;
 			combo->clear();
 			combo->addItem("Failed to load broadcasts");
-			if (loginButton)
-				loginButton->setText("Login");
+			set_auth_state(loginButton, AuthUiState::SignedOut);
 		}, Qt::QueuedConnection);
 		return;
 	}
@@ -289,13 +497,14 @@ static void lore_broadcasts_dropdown_callback(const lore_api_result *result, voi
 		     result->status_code,
 		     errorText.toUtf8().constData());
 
-		QMetaObject::invokeMethod(owner, [combo, errorText, loginButton]() {
+		const bool unauthorized = result->status_code == 401 || result->status_code == 403;
+		QMetaObject::invokeMethod(owner, [combo, errorText, loginButton, unauthorized]() {
 			if (!combo)
 				return;
 			combo->clear();
-			combo->addItem("Failed to load broadcasts");
-			if (loginButton)
-				loginButton->setText("Login");
+			combo->addItem(unauthorized ? "Sign in to see your broadcasts"
+						    : "Failed to load broadcasts");
+			set_auth_state(loginButton, AuthUiState::SignedOut);
 		}, Qt::QueuedConnection);
 
 		return;
@@ -308,8 +517,8 @@ static void lore_broadcasts_dropdown_callback(const lore_api_result *result, voi
 			return;
 
 		populate_broadcast_dropdown_from_json(combo, body);
-		if (loginButton)
-			loginButton->setText("Logout");
+		if (loginButton && !is_signed_in_state(loginButton))
+			set_auth_state(loginButton, AuthUiState::SignedIn);
 		if (combo->count() == 0)
 			combo->addItem("No broadcasts found");
 	}, Qt::QueuedConnection);
@@ -350,6 +559,7 @@ static void load_broadcasts_into_dropdown(QComboBox *combo, QPushButton *loginBu
 
 		combo->clear();
 		combo->addItem("Failed to load broadcasts");
+		set_auth_state(loginButton, AuthUiState::SignedOut);
 		delete ctx;
 	}
 
@@ -394,18 +604,8 @@ static void on_device_login_tokenReceived(const lore_api_result *result, void *u
         QMetaObject::invokeMethod(
             qApp,
             [broadcastsDropdown, loginButton, owner, accessToken]() {
+                set_auth_state(loginButton, AuthUiState::SignedIn, "Signed in successfully.");
                 load_broadcasts_into_dropdown(broadcastsDropdown, loginButton, owner);
-
-                if (loginButton) {
-                    loginButton->setText("Authentication Succeeded!");
-                    loginButton->setEnabled(true);
-
-                    QTimer::singleShot(3000, loginButton, [loginButton]() {
-                        if (loginButton) {
-                            loginButton->setText("Login");
-                        }
-                    });
-                }
             },
             Qt::QueuedConnection);
         delete ctx;
@@ -414,6 +614,18 @@ static void on_device_login_tokenReceived(const lore_api_result *result, void *u
              "[TrueLORE] Authentication exchange code failed: status=%ld error=%s",
              result->status_code,
              result->error_text ? result->error_text : "(none)");
+
+        QPointer<QPushButton> loginButton = ctx->loginButton;
+        if (loginButton) {
+            QMetaObject::invokeMethod(
+                qApp,
+                [loginButton]() {
+                    set_auth_state(loginButton, AuthUiState::Failed,
+                                   "Couldn't finish signing in. Please try again.");
+                },
+                Qt::QueuedConnection);
+        }
+
         delete ctx;
     }
 }
@@ -435,10 +647,9 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 			QMetaObject::invokeMethod(
 				qApp,
 				[loginButton, countDown]() {
-					if (loginButton) {
-						loginButton->setText(
-							QString("Waiting for Authentication... (%1s)").arg(countDown));
-					}
+					set_auth_state(loginButton, AuthUiState::Waiting,
+						       QString("Continue in your browser to finish signing in (%1s left).")
+							       .arg(countDown));
 				},
 				Qt::QueuedConnection);
 		}
@@ -488,16 +699,7 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 				QMetaObject::invokeMethod(
 					qApp,
 					[loginButton]() {
-						if (!loginButton)
-							return;
-
-						loginButton->setText("Authentication Failed!");
-						loginButton->setEnabled(true);
-
-						QTimer::singleShot(3000, loginButton, [loginButton]() {
-							if (loginButton)
-								loginButton->setText("Login");
-						});
+						set_auth_state(loginButton, AuthUiState::Failed);
 					},
 					Qt::QueuedConnection);
 			}
@@ -510,20 +712,13 @@ static void on_device_login_check(const lore_api_result *result, void *user_data
 		QString finalStatus = ctx->abort ? "Aborted by User" : "Timed Out";
 		blog(LOG_WARNING, "[TrueLORE] Authentication %s", finalStatus.toUtf8().constData());
 
+		const QString detail = ctx->abort ? "Sign-in was cancelled."
+						  : "Sign-in timed out. Please try again.";
 		if (loginButton) {
 			QMetaObject::invokeMethod(
 				qApp,
-				[loginButton, finalStatus]() {
-					if (!loginButton)
-						return;
-
-					loginButton->setText("Authentication " + finalStatus + "!");
-					loginButton->setEnabled(true);
-
-					QTimer::singleShot(3000, loginButton, [loginButton]() {
-						if (loginButton)
-							loginButton->setText("Login");
-					});
+				[loginButton, detail]() {
+					set_auth_state(loginButton, AuthUiState::Failed, detail);
 				},
 				Qt::QueuedConnection);
 		}
@@ -549,16 +744,8 @@ static void on_device_login(const lore_api_result *result, void *user_data)
 			QMetaObject::invokeMethod(
 				qApp,
 				[loginButton]() {
-					if (!loginButton)
-						return;
-
-					loginButton->setText("Authentication Failed!");
-					loginButton->setEnabled(true);
-
-					QTimer::singleShot(3000, loginButton, [loginButton]() {
-						if (loginButton)
-							loginButton->setText("Login");
-					});
+					set_auth_state(loginButton, AuthUiState::Failed,
+						       "Couldn't reach TrueLORE. Check your connection and try again.");
 				},
 				Qt::QueuedConnection);
 		}
@@ -582,8 +769,7 @@ static void on_device_login(const lore_api_result *result, void *user_data)
 		QMetaObject::invokeMethod(
 			qApp,
 			[loginButton]() {
-				if (loginButton)
-					loginButton->setText("Waiting for Authentication...");
+				set_auth_state(loginButton, AuthUiState::Waiting);
 			},
 			Qt::QueuedConnection);
 	}
@@ -603,16 +789,7 @@ static void on_device_login(const lore_api_result *result, void *user_data)
 			QMetaObject::invokeMethod(
 				qApp,
 				[loginButton]() {
-					if (!loginButton)
-						return;
-
-					loginButton->setText("Authentication Failed!");
-					loginButton->setEnabled(true);
-
-					QTimer::singleShot(3000, loginButton, [loginButton]() {
-						if (loginButton)
-							loginButton->setText("Login");
-					});
+					set_auth_state(loginButton, AuthUiState::Failed);
 				},
 				Qt::QueuedConnection);
 		}
@@ -636,8 +813,13 @@ static void open_taffylabs_settings_dialog()
 
 	QDialog *dlg = new QDialog(parent);
 	dlg->setAttribute(Qt::WA_DeleteOnClose, true);
-	dlg->setWindowTitle("TrueLORE Settings v" + QString::fromUtf8(PLUGIN_VERSION));
-	dlg->resize(500, 520);
+	dlg->setWindowTitle("TrueLORE Settings");
+	dlg->setMinimumWidth(500);
+
+	// Polish first so the dialog picks up the OBS theme's font size and palette.
+	dlg->ensurePolished();
+	const qreal basePointSize = dlg->font().pointSizeF() > 0 ? dlg->font().pointSizeF() : 10.0;
+	dlg->setStyleSheet(settings_dialog_stylesheet(dlg->palette(), basePointSize));
 
 	QObject::connect(dlg, &QDialog::finished,
     [](int result) {
@@ -650,100 +832,195 @@ static void open_taffylabs_settings_dialog()
     });
 
 	QVBoxLayout *rootLayout = new QVBoxLayout(dlg);
+	rootLayout->setContentsMargins(20, 18, 20, 18);
+	rootLayout->setSpacing(6);
 
-	// Enable Lore Stream (top)
+	// Header
+	QHBoxLayout *headerLayout = new QHBoxLayout();
+	QVBoxLayout *headerTextLayout = new QVBoxLayout();
+	headerTextLayout->setSpacing(0);
+
+	QLabel *titleLabel = new QLabel("TrueLORE", dlg);
+	titleLabel->setObjectName("loreTitle");
+	QLabel *subtitleLabel = new QLabel("by Taffy Labs", dlg);
+	subtitleLabel->setProperty("loreMuted", true);
+	headerTextLayout->addWidget(titleLabel);
+	headerTextLayout->addWidget(subtitleLabel);
+
+	QLabel *versionLabel = new QLabel("v" + QString::fromUtf8(PLUGIN_VERSION), dlg);
+	versionLabel->setProperty("loreMuted", true);
+
+	headerLayout->addLayout(headerTextLayout);
+	headerLayout->addStretch();
+	headerLayout->addWidget(versionLabel, 0, Qt::AlignTop);
+	rootLayout->addLayout(headerLayout);
+	rootLayout->addSpacing(10);
+
+	// Account
+	rootLayout->addWidget(make_section_label("Account", dlg));
+	QFrame *accountCard = make_card(dlg);
+
+	QLabel *authDot = new QLabel(accountCard);
+	authDot->setObjectName("loreAuthDot");
+	QLabel *authStatusLabel = new QLabel(accountCard);
+	authStatusLabel->setObjectName("loreAuthStatus");
+	QLabel *authDetailLabel = make_hint(QString(), accountCard);
+	authDetailLabel->setObjectName("loreAuthDetail");
+	authDetailLabel->setContentsMargins(18, 0, 0, 0); // dot width + spacing
+
+	QHBoxLayout *authStatusRow = new QHBoxLayout();
+	authStatusRow->setSpacing(8);
+	authStatusRow->addWidget(authDot, 0, Qt::AlignVCenter);
+	authStatusRow->addWidget(authStatusLabel, 1);
+
+	QVBoxLayout *authTextLayout = new QVBoxLayout();
+	authTextLayout->setSpacing(2);
+	authTextLayout->addStretch();
+	authTextLayout->addLayout(authStatusRow);
+	authTextLayout->addWidget(authDetailLabel);
+	authTextLayout->addStretch();
+
+	QPushButton *loginButton = new QPushButton(accountCard);
+	loginButton->setAutoDefault(false);
+	loginButton->setDefault(false);
+	loginButton->setMinimumWidth(100);
+
+	QHBoxLayout *accountLayout = new QHBoxLayout();
+	accountLayout->setSpacing(12);
+	accountLayout->addLayout(authTextLayout, 1);
+	accountLayout->addWidget(loginButton, 0, Qt::AlignVCenter);
+	static_cast<QVBoxLayout *>(accountCard->layout())->addLayout(accountLayout);
+	rootLayout->addWidget(accountCard);
+	rootLayout->addSpacing(10);
+
+	// Streaming
+	rootLayout->addWidget(make_section_label("Streaming", dlg));
+	QFrame *streamingCard = make_card(dlg);
+	QVBoxLayout *streamingLayout = static_cast<QVBoxLayout *>(streamingCard->layout());
+
 	QCheckBox *enableLoreStreamCheck =
-		new QCheckBox("Enable TrueLORE Stream", dlg);
+		new QCheckBox("Stream to TrueLORE when I go live", streamingCard);
 	enableLoreStreamCheck->setChecked(taffylabs_get_enabled());
-	rootLayout->addWidget(enableLoreStreamCheck);
+	streamingLayout->addWidget(enableLoreStreamCheck);
+	streamingLayout->addWidget(make_hint(
+		"Sends a copy of your stream to TrueLORE whenever you go live.",
+		streamingCard, enableLoreStreamCheck));
 
-	// Enforce 2K FPS limit
-	QCheckBox *enforce2kCheck = new QCheckBox("Enforce 2 Keyframe Per Second Limit", dlg);
+	QFrame *streamingDivider = new QFrame(streamingCard);
+	streamingDivider->setObjectName("loreDivider");
+	streamingLayout->addSpacing(4);
+	streamingLayout->addWidget(streamingDivider);
+	streamingLayout->addSpacing(4);
+
+	QCheckBox *enforce2kCheck =
+		new QCheckBox("Keep keyframe interval at 2 seconds", streamingCard);
 	enforce2kCheck->setChecked(taffylabs_get_enforce_2k_fps());
-	rootLayout->addWidget(enforce2kCheck);
+	streamingLayout->addWidget(enforce2kCheck);
+	streamingLayout->addWidget(make_hint(
+		"Applied when you go live if your encoder is set higher or to auto.",
+		streamingCard, enforce2kCheck));
 
-	QLabel *enforceWarningLabel = new QLabel("Please note, it is STRONGLY recommended to enable a 2 Keyframe Per Second minimum.  Most streaming targets already enforce this, but any that do not WILL BE MODIFIED when TrueLORE is enabled.", dlg);
-	enforceWarningLabel->setStyleSheet("QLabel { color : red; font-weight: bold; }");
+	QFrame *enforceWarningCallout = new QFrame(streamingCard);
+	enforceWarningCallout->setObjectName("loreCallout");
+	QVBoxLayout *calloutLayout = new QVBoxLayout(enforceWarningCallout);
+	calloutLayout->setContentsMargins(12, 8, 12, 8);
+	QLabel *enforceWarningLabel = new QLabel(
+		"<b>Strongly recommended.</b> Most streaming platforms already require a keyframe "
+		"at least every 2 seconds.",
+		enforceWarningCallout);
 	enforceWarningLabel->setWordWrap(true);
-	enforceWarningLabel->setVisible(!taffylabs_get_enforce_2k_fps());
-	rootLayout->addWidget(enforceWarningLabel);
+	calloutLayout->addWidget(enforceWarningLabel);
+	enforceWarningCallout->setVisible(!taffylabs_get_enforce_2k_fps());
+	streamingLayout->addSpacing(2);
+	streamingLayout->addWidget(enforceWarningCallout);
 
-	QObject::connect(enforce2kCheck, &QCheckBox::toggled, [enforceWarningLabel](bool checked) {
-		enforceWarningLabel->setVisible(!checked);
+	QObject::connect(enforce2kCheck, &QCheckBox::toggled, [enforceWarningCallout, dlg](bool checked) {
+		enforceWarningCallout->setVisible(!checked);
+		QTimer::singleShot(0, dlg, [dlg]() { fit_dialog_height(dlg); });
 	});
 
-	// Login button
-	QPushButton *loginButton = new QPushButton("Please Wait...", dlg);
-	rootLayout->addWidget(loginButton);
+	rootLayout->addWidget(streamingCard);
+	rootLayout->addSpacing(10);
 
-	// Manual bearer token + dropdown
-	QFormLayout *authFormLayout = new QFormLayout();
-
-	//QLineEdit *bearerTokenEdit = new QLineEdit(dlg);
-	//bearerTokenEdit->setText(taffylabs_get_bearer_token());
-	//authFormLayout->addRow("Manual Bearer Token", bearerTokenEdit);
-
-	QComboBox *broadcastsDropdown = new QComboBox(dlg);
-	authFormLayout->addRow("Available Broadcasts", broadcastsDropdown);
-
-	rootLayout->addLayout(authFormLayout);
-
-	// Add New Broadcast button directly under dropdown, outside groupbox
-	QHBoxLayout *addNewLayout = new QHBoxLayout();
-	addNewLayout->addStretch();
-
-
-	rootLayout->addLayout(addNewLayout);
-
-	// Broadcast Metadata group
-	QGroupBox *metadataGroup = new QGroupBox("Broadcast Metadata", dlg);
-	QVBoxLayout *metadataLayout = new QVBoxLayout(metadataGroup);
+	// Broadcast
+	rootLayout->addWidget(make_section_label("Broadcast", dlg));
+	QFrame *broadcastCard = make_card(dlg);
+	QVBoxLayout *broadcastLayout = static_cast<QVBoxLayout *>(broadcastCard->layout());
 
 	QFormLayout *formLayout = new QFormLayout();
+	formLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+	formLayout->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+	formLayout->setFormAlignment(Qt::AlignLeft | Qt::AlignTop);
+	formLayout->setRowWrapPolicy(QFormLayout::DontWrapRows);
+	formLayout->setHorizontalSpacing(14);
+	formLayout->setVerticalSpacing(8);
 
-	QLineEdit *titleEdit = new QLineEdit(metadataGroup);
+	QComboBox *broadcastsDropdown = new QComboBox(broadcastCard);
+
+	QLineEdit *titleEdit = new QLineEdit(broadcastCard);
+	titleEdit->setPlaceholderText("Broadcast title");
 	titleEdit->setText(taffylabs_get_title());
 
-	QTextEdit *descriptionEdit = new QTextEdit(metadataGroup);
+	QTextEdit *descriptionEdit = new QTextEdit(broadcastCard);
+	descriptionEdit->setPlaceholderText("What's this broadcast about?");
+	descriptionEdit->setAcceptRichText(false);
 	descriptionEdit->setPlainText(taffylabs_get_description());
-	descriptionEdit->setFixedHeight(120);
+	descriptionEdit->setFixedHeight(96);
 
+	formLayout->addRow("Broadcast", broadcastsDropdown);
 	formLayout->addRow("Title", titleEdit);
 	formLayout->addRow("Description", descriptionEdit);
+	if (QWidget *descriptionLabel = formLayout->labelForField(descriptionEdit))
+		formLayout->setAlignment(descriptionLabel, Qt::AlignLeft | Qt::AlignTop);
+	broadcastLayout->addLayout(formLayout);
 
-	metadataLayout->addLayout(formLayout);
-
-	// Metadata action buttons
 	QHBoxLayout *metadataButtonLayout = new QHBoxLayout();
 	metadataButtonLayout->addStretch();
-
-	QPushButton *updateMetadataButton =
-		new QPushButton("Update", metadataGroup);
-
+	QPushButton *updateMetadataButton = new QPushButton("Update Broadcast", broadcastCard);
+	updateMetadataButton->setAutoDefault(false);
 	metadataButtonLayout->addWidget(updateMetadataButton);
-	metadataLayout->addLayout(metadataButtonLayout);
+	broadcastLayout->addSpacing(2);
+	broadcastLayout->addLayout(metadataButtonLayout);
 
-	rootLayout->addWidget(metadataGroup);
+	rootLayout->addWidget(broadcastCard);
 
-	// OK button row
+	// Footer
+	rootLayout->addStretch(1);
+	rootLayout->addSpacing(14);
 	QHBoxLayout *buttonLayout = new QHBoxLayout();
 	buttonLayout->addStretch();
 
-	QPushButton *okButton = new QPushButton("OK", dlg);
+	QPushButton *cancelButton = new QPushButton("Cancel", dlg);
+	cancelButton->setAutoDefault(false);
+	QPushButton *okButton = new QPushButton("Save", dlg);
+	okButton->setProperty("loreRole", "primary");
+	okButton->setDefault(true);
+	okButton->setMinimumWidth(90);
+	buttonLayout->addWidget(cancelButton);
 	buttonLayout->addWidget(okButton);
 
 	rootLayout->addLayout(buttonLayout);
-	
+
+	set_auth_state(loginButton, AuthUiState::Checking);
+	dlg->resize(600, dlg->sizeHint().height());
+
+	QObject::connect(cancelButton, &QPushButton::clicked, dlg, &QDialog::reject);
+
 	QObject::connect(loginButton, &QPushButton::clicked,
-    	[loginButton, broadcastsDropdown, dlg]() {
-		if(loginButton->text().contains("Logout")){
+    	[loginButton, broadcastsDropdown, titleEdit, descriptionEdit, dlg]() {
+		if (is_signed_in_state(loginButton)) {
+			QMessageBox::StandardButton reply = QMessageBox::question(dlg, "Sign Out", "Are you sure you want to sign out of TrueLORE?", QMessageBox::Yes|QMessageBox::No);
+			if (reply == QMessageBox::No) {
+				return;
+			}
 			taffylabs_clear_settings();
-			loginButton->setText("Login");
+			set_auth_state(loginButton, AuthUiState::SignedOut);
+			titleEdit->clear();
+			descriptionEdit->clear();
 			load_broadcasts_into_dropdown(broadcastsDropdown, loginButton, dlg);
 			return;
 		}
-        loginButton->setEnabled(false);
-        loginButton->setText("Generating Authentication URL...");
+        set_auth_state(loginButton, AuthUiState::Starting);
         const char *hexID = random_hex_32();
         LoginContext *ctx = new LoginContext();
 		ctx->owner = dlg;
@@ -756,8 +1033,8 @@ static void open_taffylabs_settings_dialog()
             ctx);
 
         if (!started.ok) {
-            loginButton->setText("Authentication Failed To Start!");
-            loginButton->setEnabled(true);
+            set_auth_state(loginButton, AuthUiState::Failed,
+                           "Couldn't start sign-in. Check your connection and try again.");
             delete ctx;
         }
     });
@@ -780,6 +1057,8 @@ static void open_taffylabs_settings_dialog()
 				blog(LOG_WARNING,
 				     "[TrueLORE] Broadcast dropdown index out of range: %d",
 				     iSelected);
+				titleEdit->clear();
+				descriptionEdit->clear();
 				return;
 			}
 
@@ -863,7 +1142,8 @@ static void open_taffylabs_settings_dialog()
 	dlg->show();
 	dlg->raise();
 	dlg->activateWindow();
-	
+	QTimer::singleShot(0, dlg, [dlg]() { fit_dialog_height(dlg); });
+
 	load_broadcasts_into_dropdown(broadcastsDropdown, loginButton, dlg);		
 
 }

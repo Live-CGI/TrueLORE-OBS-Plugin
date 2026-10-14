@@ -13,7 +13,7 @@
 
 #define MyAppName "TaffyLabs OBS Plugin"
 #ifndef MyAppVersion
-#define MyAppVersion "2026.03.23.1500"
+#define MyAppVersion "2026.06.09.2146"
 #endif
 #define MyAppPublisher "TaffyLabs"
 #define MyAppURL "https://www.taffylabs.io/"

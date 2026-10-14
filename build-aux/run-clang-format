@@ -1,1 +1,1 @@
-./run-format.zsh
+FORMATTER_NAME=clang exec "$(dirname "$0")/.run-format.zsh" "$@"
