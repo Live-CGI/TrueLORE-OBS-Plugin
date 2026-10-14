@@ -1,1 +1,1 @@
-"$(dirname "$0")/.run-format.zsh" "$@"
+FORMATTER_NAME=swift exec "$(dirname "$0")/.run-format.zsh" "$@"
