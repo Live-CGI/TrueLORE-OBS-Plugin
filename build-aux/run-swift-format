@@ -1,1 +1,1 @@
-.run-format.zsh
+"$(dirname "$0")/.run-format.zsh" "$@"
