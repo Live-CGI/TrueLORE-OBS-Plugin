@@ -1,13 +1,15 @@
 name: Push
 run-name: ${{ github.ref_name }} push run 🚀
+# No `tags:` trigger. Releases here are published by lore-obs, which builds the
+# binaries and creates the release — creating the tag in this repo. Building it
+# again here produced a second set of binaries from this repo's own source,
+# which has diverged, and whichever job finished last won the release assets.
 on:
   push:
     branches:
       - master
       - main
       - 'release/**'
-    tags:
-      - '*'
 permissions:
   contents: write
 jobs:
