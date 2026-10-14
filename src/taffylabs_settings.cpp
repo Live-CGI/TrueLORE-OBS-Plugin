@@ -32,7 +32,7 @@ namespace
 	static bool g_enabled = true;
 	static bool g_optional_metadata_enabled = false;
 	static bool g_autoBroadcast = true;
-	static bool g_enforce2KFPS = false;
+	static bool g_enforce2KFPS = true;
 
 	static char g_title[TAFFY_TEXT_MAX] = "";
 	static char g_description[TAFFY_TEXT_MAX] = "";
@@ -315,7 +315,7 @@ void taffylabs_load_settings(void)
 	g_enabled = true;
 	g_optional_metadata_enabled = false;
 	g_autoBroadcast = true;
-	g_enforce2KFPS = false;
+	g_enforce2KFPS = true;
 
 	copy_text(g_title, sizeof(g_title), "");
 	copy_text(g_description, sizeof(g_description), "");
@@ -329,6 +329,11 @@ void taffylabs_load_settings(void)
 
 	if (!cfg)
 		return;
+
+	// config_get_bool returns false for keys that were never saved, so register
+	// defaults to keep TrueLORE streaming and the keyframe check on for new installs.
+	config_set_default_bool(cfg, TAFFY_SECTION, KEY_ENABLED, true);
+	config_set_default_bool(cfg, TAFFY_SECTION, KEY_ENFORCE_2K_FPS, true);
 
 	g_enabled = config_get_bool(cfg, TAFFY_SECTION, KEY_ENABLED);
 	g_optional_metadata_enabled = config_get_bool(cfg, TAFFY_SECTION, KEY_OPTIONAL_METADATA_ENABLED);
@@ -354,10 +359,10 @@ void taffylabs_clear_settings(void)
 {
 	blog(LOG_INFO, "[TrueLORE] Clearing settings...");
 
-	g_enabled = false;
+	g_enabled = true;
 	g_optional_metadata_enabled = false;
 	g_autoBroadcast = true;
-	g_enforce2KFPS = false;
+	g_enforce2KFPS = true;
 
 	copy_text(g_title, sizeof(g_title), "");
 	copy_text(g_description, sizeof(g_description), "");
